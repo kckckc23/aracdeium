@@ -2,40 +2,136 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Pong</title>
+  <title>🏓 PONG - Retro Arcade</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+    
     body {
       margin: 0;
-      background: #002244; /* Contrasting background */
+      background: linear-gradient(45deg, #0a0a0a, #1a0a2e, #16213e);
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       height: 100vh;
+      font-family: 'Orbitron', monospace;
+      color: #00ffff;
     }
+    
+    h1 {
+      font-size: 3rem;
+      background: linear-gradient(90deg, #ff00ff, #00ffff, #ff00ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: 0 0 20px #00ffff;
+      margin-bottom: 1rem;
+    }
+    
     canvas {
       background: black;
       display: block;
-      box-shadow: 0 0 20px white;
+      border: 3px solid #00ffff;
+      border-radius: 10px;
+      box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+    }
+    
+    .back-button {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: linear-gradient(45deg, #ff00ff, #00ffff);
+      border: none;
+      color: #000;
+      padding: 10px 20px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-family: 'Orbitron', monospace;
+      font-weight: 700;
+      transition: all 0.3s ease;
+    }
+
+    .back-button:hover {
+      transform: scale(1.1);
+      box-shadow: 0 5px 15px rgba(255, 0, 255, 0.5);
+    }
+
+    p {
+      margin-top: 1rem;
+      font-size: 1.1rem;
+      color: #00ffff;
+      text-shadow: 0 0 10px #00ffff;
+    }
+
+    .game-over {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.9);
+      border: 3px solid #ff00ff;
+      border-radius: 15px;
+      padding: 2rem;
+      text-align: center;
+      display: none;
+      z-index: 1000;
+    }
+
+    .game-over h2 {
+      color: #ff00ff;
+      margin-bottom: 1rem;
+      font-size: 2rem;
+    }
+
+    .restart-button {
+      background: linear-gradient(45deg, #00ffff, #ff00ff);
+      border: none;
+      color: #000;
+      padding: 12px 30px;
+      border-radius: 25px;
+      cursor: pointer;
+      font-family: 'Orbitron', monospace;
+      font-weight: 700;
+      margin-top: 1rem;
     }
   </style>
 </head>
 <body>
+  <button class="back-button" onclick="window.location.href='index.html'">← BACK TO ARCADE</button>
+  <h1>🏓 PONG</h1>
   <canvas id="pong" width="600" height="400"></canvas>
+  <p>Move your mouse to control the paddle</p>
+  <div class="game-over" id="gameOver">
+    <h2 id="gameOverTitle">GAME OVER</h2>
+    <div>Player Score: <span id="playerScore">0</span></div>
+    <div>AI Score: <span id="aiScore">0</span></div>
+    <button class="restart-button" onclick="restartGame()">PLAY AGAIN</button>
+  </div>
+
   <script>
     const canvas = document.getElementById("pong");
     const ctx = canvas.getContext("2d");
 
+    // Audio setup
+    const ballHitSound = new Audio('music/pong_ballhit.mp3');
+    ballHitSound.volume = 0.5;
+
     const paddleWidth = 10, paddleHeight = 100;
-    const player = { x: 0, y: canvas.height / 2 - 50 };
-    const ai = { x: canvas.width - 10, y: canvas.height / 2 - 50 };
-    const ball = {
+    const player = { x: 0, y: canvas.height / 2 - 50, score: 0 };
+    const ai = { x: canvas.width - 10, y: canvas.height / 2 - 50, score: 0 };
+    let ball = {
       x: canvas.width / 2,
       y: canvas.height / 2,
       radius: 8,
-      speed: 4,
+      baseSpeed: 4,
+      currentSpeed: 4,
       dx: 4,
-      dy: 4
+      dy: 4,
+      bounces: 0
     };
+    
+    let gameRunning = true;
+    const maxScore = 10;
 
     function drawRect(x, y, w, h, color) {
       ctx.fillStyle = color;
@@ -52,23 +148,40 @@
 
     function drawNet() {
       for (let i = 0; i < canvas.height; i += 15) {
-        drawRect(canvas.width / 2 - 1, i, 2, 10, "white");
+        drawRect(canvas.width / 2 - 1, i, 2, 10, "#00FFFF");
       }
     }
 
+    function drawScore() {
+      ctx.fillStyle = "#00FFFF";
+      ctx.font = "30px Orbitron";
+      ctx.textAlign = "center";
+      ctx.fillText(player.score, canvas.width / 4, 50);
+      ctx.fillText(ai.score, 3 * canvas.width / 4, 50);
+      
+      // Speed indicator
+      ctx.font = "16px Orbitron";
+      ctx.fillText(`Speed: ${ball.currentSpeed.toFixed(1)}x`, canvas.width / 2, canvas.height - 20);
+    }
+
     function movePaddle(evt) {
+      if (!gameRunning) return;
       const rect = canvas.getBoundingClientRect();
-      player.y = evt.clientY - rect.top - paddleHeight / 2;
+      player.y = Math.max(0, Math.min(canvas.height - paddleHeight, evt.clientY - rect.top - paddleHeight / 2));
     }
 
     function resetBall() {
       ball.x = canvas.width / 2;
       ball.y = canvas.height / 2;
-      ball.dx = 4 * (Math.random() > 0.5 ? 1 : -1);
-      ball.dy = 4 * (Math.random() > 0.5 ? 1 : -1);
+      ball.currentSpeed = ball.baseSpeed;
+      ball.dx = ball.baseSpeed * (Math.random() > 0.5 ? 1 : -1);
+      ball.dy = ball.baseSpeed * (Math.random() > 0.5 ? 1 : -1);
+      ball.bounces = 0;
     }
 
     function update() {
+      if (!gameRunning) return;
+      
       ball.x += ball.dx;
       ball.y += ball.dy;
 
@@ -77,8 +190,16 @@
         ball.dy = -ball.dy;
       }
 
-      // AI Movement
-      ai.y += (ball.y - (ai.y + paddleHeight / 2)) * 0.1;
+      // AI Movement (slightly imperfect for gameplay)
+      const aiCenter = ai.y + paddleHeight / 2;
+      const ballCenter = ball.y;
+      const aiSpeed = 4;
+      
+      if (ballCenter < aiCenter - 10) {
+        ai.y = Math.max(0, ai.y - aiSpeed);
+      } else if (ballCenter > aiCenter + 10) {
+        ai.y = Math.min(canvas.height - paddleHeight, ai.y + aiSpeed);
+      }
 
       // Choose paddle based on side
       const paddle = ball.x < canvas.width / 2 ? player : ai;
@@ -90,24 +211,79 @@
         ball.y + ball.radius > paddle.y &&
         ball.y - ball.radius < paddle.y + paddleHeight
       ) {
-        // Reverse and increase speed
-        ball.dx = -ball.dx * 1.05;
-        ball.dy = ball.dy * 1.05;
-        ball.x += ball.dx > 0 ? 5 : -5; // prevent sticking
+        // Calculate hit position for angle variation
+        const hitPos = (ball.y - (paddle.y + paddleHeight / 2)) / (paddleHeight / 2);
+        
+        // Reverse direction and increase speed
+        ball.dx = -ball.dx;
+        ball.dy = ball.dy + hitPos * 2; // Add spin based on hit position
+        
+        // Increase speed with each bounce
+        ball.bounces++;
+        ball.currentSpeed = Math.min(12, ball.baseSpeed + ball.bounces * 0.3);
+        
+        // Apply new speed
+        const speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+        ball.dx = (ball.dx / speed) * ball.currentSpeed;
+        ball.dy = (ball.dy / speed) * ball.currentSpeed;
+        
+        // Prevent sticking
+        ball.x += ball.dx > 0 ? 15 : -15;
+        
+        // Play ball hit sound
+        ballHitSound.currentTime = 0;
+        ballHitSound.play().catch(e => console.log('Audio play failed:', e));
       }
 
-      // Reset ball if out of bounds
-      if (ball.x < 0 || ball.x > canvas.width) {
+      // Score when ball goes out of bounds
+      if (ball.x < -ball.radius) {
+        ai.score++;
         resetBall();
+        checkGameEnd();
+      } else if (ball.x > canvas.width + ball.radius) {
+        player.score++;
+        resetBall();
+        checkGameEnd();
+      }
+    }
+
+    function checkGameEnd() {
+      if (player.score >= maxScore || ai.score >= maxScore) {
+        gameRunning = false;
+        document.getElementById('playerScore').textContent = player.score;
+        document.getElementById('aiScore').textContent = ai.score;
+        document.getElementById('gameOverTitle').textContent = 
+          player.score >= maxScore ? 'YOU WIN!' : 'AI WINS!';
+        document.getElementById('gameOver').style.display = 'block';
       }
     }
 
     function draw() {
       drawRect(0, 0, canvas.width, canvas.height, "black");
       drawNet();
-      drawRect(player.x, player.y, paddleWidth, paddleHeight, "white");
-      drawRect(ai.x, ai.y, paddleWidth, paddleHeight, "white");
+      
+      // Draw paddles with glow effect
+      ctx.shadowColor = "#00FFFF";
+      ctx.shadowBlur = 10;
+      drawRect(player.x, player.y, paddleWidth, paddleHeight, "#00FFFF");
+      drawRect(ai.x, ai.y, paddleWidth, paddleHeight, "#FF00FF");
+      ctx.shadowBlur = 0;
+      
+      // Draw ball with trail effect
+      ctx.shadowColor = "#FFFFFF";
+      ctx.shadowBlur = 15;
       drawCircle(ball.x, ball.y, ball.radius, "white");
+      ctx.shadowBlur = 0;
+      
+      drawScore();
+    }
+
+    function restartGame() {
+      player.score = 0;
+      ai.score = 0;
+      gameRunning = true;
+      resetBall();
+      document.getElementById('gameOver').style.display = 'none';
     }
 
     function game() {

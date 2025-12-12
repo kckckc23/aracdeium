@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👾 SPACE INVADERS - Retro Arcade</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+        
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(45deg, #0a0a0a, #1a0a2e, #16213e);
+            font-family: 'Orbitron', monospace;
+            color: #00ffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .game-container {
+            display: flex;
+            gap: 2rem;
+            align-items: flex-start;
+            padding: 1rem;
+        }
+
+        .game-board {
+            background: #000;
+            border: 3px solid #00ffff;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+        }
+
+        .info-panel {
+            background: linear-gradient(145deg, #1a1a2e, #16213e);
+            border: 2px solid #ff00ff;
+            border-radius: 10px;
+            padding: 1.5rem;
+            min-width: 200px;
+            box-shadow: 0 0 20px rgba(255, 0, 255, 0.3);
+        }
+
+        .info-panel h2 {
+            color: #ff00ff;
+            margin-bottom: 1rem;
+            text-align: center;
+            font-size: 1.5rem;
+        }
+
+        .score, .lives, .level {
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .controls {
+            margin-top: 2rem;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .controls h3 {
+            color: #00ffff;
+            margin-bottom: 0.5rem;
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: linear-gradient(45deg, #ff00ff, #00ffff);
+            border: none;
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-family: 'Orbitron', monospace;
+            font-weight: 700;
+            transition: all 0.3s ease;
+        }
+
+        .back-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 5px 15px rgba(255, 0, 255, 0.5);
+        }
+
+        .game-over {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            border: 3px solid #ff00ff;
+            border-radius: 15px;
+            padding: 2rem;
+            text-align: center;
+            display: none;
+            z-index: 1000;
+        }
+
+        .game-over h2 {
+            color: #ff00ff;
+            margin-bottom: 1rem;
+            font-size: 2rem;
+        }
+
+        .restart-button {
+            background: linear-gradient(45deg, #00ffff, #ff00ff);
+            border: none;
+            color: #000;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-family: 'Orbitron', monospace;
+            font-weight: 700;
+            margin-top: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .game-container {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .info-panel {
+                min-width: auto;
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="back-button" onclick="window.location.href='index.html'">← BACK TO ARCADE</button>
+    
+    <div class="game-container">
+        <canvas id="spaceinvaders" class="game-board" width="600" height="600"></canvas>
+        
+        <div class="info-panel">
+            <h2>👾 SPACE INVADERS</h2>
+            <div class="score">Score: <span id="score">0</span></div>
+            <div class="lives">Lives: <span id="lives">3</span></div>
+            <div class="level">Wave: <span id="level">1</span></div>
+            
+            <div class="controls">
+                <h3>Controls:</h3>
+                <div>← → Move Ship</div>
+                <div>Space: Shoot</div>
+                <div>Destroy all invaders!</div>
+                <div>Don't let them reach you!</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="game-over" id="gameOver">
+        <h2 id="gameOverTitle">GAME OVER</h2>
+        <div>Final Score: <span id="finalScore">0</span></div>
+        <button class="restart-button" onclick="restartGame()">PLAY AGAIN</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('spaceinvaders');
+        const ctx = canvas.getContext('2d');
+        
+        // Audio setup
+        let audioEnabled = false;
+        const invaderKilledSound = new Audio('music/spaceinvaders_invaderkilled.mp3');
+        const playerDeathSound = new Audio('music/spaceinvaders_playerdeath.mp3');
+        const shootSound = new Audio('music/spaceinvaders_shoot.mp3');
+        
+        invaderKilledSound.volume = 0.5;
+        playerDeathSound.volume = 0.7;
+        shootSound.volume = 0.4;
+
+        // Enable audio on first user interaction
+        function enableAudio() {
+            if (!audioEnabled) {
+                audioEnabled = true;
+                // Try to load audio files
+                invaderKilledSound.load();
+                playerDeathSound.load();
+                shootSound.load();
+            }
+        }
+
+        function playSound(sound) {
+            if (audioEnabled) {
+                sound.currentTime = 0;
+                sound.play().catch(e => console.log('Audio play failed:', e));
+            }
+        }
+        
+        let score = 0;
+        let lives = 3;
+        let level = 1;
+        let gameRunning = true;
+
+        const player = {
+            x: canvas.width / 2 - 25,
+            y: canvas.height - 60,
+            width: 50,
+            height: 30,
+            speed: 3 // Reduced from 5 to 3
+        };
+
+        let bullets = [];
+        let invaders = [];
+        let invaderBullets = [];
+        let invaderDirection = 1;
+        let invaderSpeed = 1;
+
+        const keys = {
+            left: false,
+            right: false,
+            space: false
+        };
+
+        function createInvaders() {
+            invaders = [];
+            // Reduced from 5x10 to 3x6 for fewer enemies
+            const rows = Math.min(3 + Math.floor(level / 3), 5); // Start with 3 rows, max 5
+            const cols = Math.min(6 + Math.floor(level / 2), 8); // Start with 6 cols, max 8
+            
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    invaders.push({
+                        x: col * 70 + 80, // More spacing
+                        y: row * 60 + 80, // More spacing and lower start
+                        width: 40,
+                        height: 30,
+                        alive: true,
+                        type: row < 1 ? 'small' : row < 2 ? 'medium' : 'large'
+                    });
+                }
+            }
+        }
+
+        function drawPlayer() {
+            ctx.fillStyle = '#00FF00';
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            
+            // Draw ship details
+            ctx.fillStyle = '#00FFFF';
+            ctx.fillRect(player.x + 20, player.y - 10, 10, 10);
+            ctx.fillRect(player.x + 5, player.y + 25, 10, 8);
+            ctx.fillRect(player.x + 35, player.y + 25, 10, 8);
+        }
+
+        function drawInvaders() {
+            invaders.forEach(invader => {
+                if (!invader.alive) return;
+                
+                let color = '#FF0000';
+                if (invader.type === 'medium') color = '#FFFF00';
+                if (invader.type === 'small') color = '#FF00FF';
+                
+                ctx.fillStyle = color;
+                ctx.fillRect(invader.x, invader.y, invader.width, invader.height);
+                
+                // Draw invader details
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(invader.x + 10, invader.y + 5, 5, 5);
+                ctx.fillRect(invader.x + 25, invader.y + 5, 5, 5);
+                ctx.fillRect(invader.x + 15, invader.y + 15, 10, 5);
+            });
+        }
+
+        function drawBullets() {
+            ctx.fillStyle = '#FFFFFF';
+            bullets.forEach(bullet => {
+                ctx.fillRect(bullet.x, bullet.y, 3, 10);
+            });
+            
+            ctx.fillStyle = '#FF0000';
+            invaderBullets.forEach(bullet => {
+                ctx.fillRect(bullet.x, bullet.y, 3, 10);
+            });
+        }
+
+        function updatePlayer() {
+            if (keys.left && player.x > 0) {
+                player.x -= player.speed;
+            }
+            if (keys.right && player.x < canvas.width - player.width) {
+                player.x += player.speed;
+            }
+        }
+
+        function updateBullets() {
+            // Player bullets
+            bullets = bullets.filter(bullet => {
+                bullet.y -= 8;
+                return bullet.y > 0;
+            });
+            
+            // Invader bullets
+            invaderBullets = invaderBullets.filter(bullet => {
+                bullet.y += 5;
+                return bullet.y < canvas.height;
+            });
+        }
+
+        let invaderMoveTimer = 0;
+        let invaderMoveDelay = 30; // Frames between moves
+        
+        function updateInvaders() {
+            invaderMoveTimer++;
+            if (invaderMoveTimer < invaderMoveDelay) return;
+            invaderMoveTimer = 0;
+            
+            let hitEdge = false;
+            let leftmostX = canvas.width;
+            let rightmostX = 0;
+            
+            // Find the boundaries of alive invaders
+            invaders.forEach(invader => {
+                if (!invader.alive) return;
+                
+                if (invader.x < leftmostX) leftmostX = invader.x;
+                if (invader.x + invader.width > rightmostX) rightmostX = invader.x + invader.width;
+            });
+            
+            // Check if the formation would hit the edge
+            const nextLeftmost = leftmostX + invaderDirection * invaderSpeed;
+            const nextRightmost = rightmostX + invaderDirection * invaderSpeed;
+            
+            if (nextLeftmost <= 0 || nextRightmost >= canvas.width) {
+                hitEdge = true;
+            }
+            
+            if (hitEdge) {
+                // Change direction and move down
+                invaderDirection *= -1;
+                invaders.forEach(invader => {
+                    if (invader.alive) {
+                        invader.y += 15; // Move down
+                    }
+                });
+                
+                // Speed up as invaders are destroyed
+                const aliveCount = invaders.filter(inv => inv.alive).length;
+                const totalInvaders = invaders.length;
+                const speedMultiplier = 1 + (totalInvaders - aliveCount) / totalInvaders;
+                invaderMoveDelay = Math.max(8, Math.floor(30 / speedMultiplier));
+            } else {
+                // Move horizontally as a block
+                invaders.forEach(invader => {
+                    if (invader.alive) {
+                        invader.x += invaderDirection * invaderSpeed;
+                    }
+                });
+            }
+            
+            // Random invader shooting (less frequent)
+            if (Math.random() < 0.005) {
+                const aliveInvaders = invaders.filter(inv => inv.alive);
+                if (aliveInvaders.length > 0) {
+                    // Prefer bottom row invaders for shooting
+                    const bottomInvaders = aliveInvaders.filter(inv => {
+                        return !aliveInvaders.some(other => 
+                            other.x === inv.x && other.y > inv.y
+                        );
+                    });
+                    
+                    const shooters = bottomInvaders.length > 0 ? bottomInvaders : aliveInvaders;
+                    const shooter = shooters[Math.floor(Math.random() * shooters.length)];
+                    
+                    invaderBullets.push({
+                        x: shooter.x + shooter.width / 2,
+                        y: shooter.y + shooter.height
+                    });
+                }
+            }
+        }
+
+        function checkCollisions() {
+            // Player bullets vs invaders
+            bullets.forEach((bullet, bulletIndex) => {
+                invaders.forEach((invader, invaderIndex) => {
+                    if (invader.alive &&
+                        bullet.x < invader.x + invader.width &&
+                        bullet.x + 3 > invader.x &&
+                        bullet.y < invader.y + invader.height &&
+                        bullet.y + 10 > invader.y) {
+                        
+                        invader.alive = false;
+                        bullets.splice(bulletIndex, 1);
+                        
+                        // Play invader killed sound
+                        playSound(invaderKilledSound);
+                        
+                        // Score based on invader type
+                        if (invader.type === 'small') score += 30;
+                        else if (invader.type === 'medium') score += 20;
+                        else score += 10;
+                        
+                        updateDisplay();
+                    }
+                });
+            });
+            
+            // Invader bullets vs player
+            invaderBullets.forEach((bullet, bulletIndex) => {
+                if (bullet.x < player.x + player.width &&
+                    bullet.x + 3 > player.x &&
+                    bullet.y < player.y + player.height &&
+                    bullet.y + 10 > player.y) {
+                    
+                    invaderBullets.splice(bulletIndex, 1);
+                    lives--;
+                    updateDisplay();
+                    
+                    if (lives <= 0) {
+                        gameOver();
+                    }
+                }
+            });
+            
+            // Check if invaders reached player
+            invaders.forEach(invader => {
+                if (invader.alive && invader.y + invader.height >= player.y) {
+                    gameOver();
+                }
+            });
+        }
+
+        function shoot() {
+            bullets.push({
+                x: player.x + player.width / 2,
+                y: player.y
+            });
+            
+            // Play shoot sound
+            playSound(shootSound);
+        }
+
+        function updateDisplay() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('lives').textContent = lives;
+            document.getElementById('level').textContent = level;
+        }
+
+        function checkWaveComplete() {
+            const aliveInvaders = invaders.filter(inv => inv.alive);
+            if (aliveInvaders.length === 0) {
+                level++;
+                invaderSpeed = Math.min(invaderSpeed + 0.3, 3); // Cap speed increase
+                
+                // Show wave complete message
+                ctx.fillStyle = '#00FFFF';
+                ctx.font = '30px Orbitron';
+                ctx.textAlign = 'center';
+                ctx.fillText(`WAVE ${level} INCOMING!`, canvas.width / 2, canvas.height / 2);
+                
+                // Delay before next wave
+                setTimeout(() => {
+                    createInvaders();
+                    updateDisplay();
+                }, 2000);
+            }
+        }
+
+        function gameOver() {
+            gameRunning = false;
+            
+            // Play player death sound
+            playSound(playerDeathSound);
+            
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('gameOverTitle').textContent = 'GAME OVER';
+            document.getElementById('gameOver').style.display = 'block';
+        }
+
+        function restartGame() {
+            score = 0;
+            lives = 3;
+            level = 1;
+            invaderSpeed = 1;
+            gameRunning = true;
+            bullets = [];
+            invaderBullets = [];
+            invaderDirection = 1;
+            
+            player.x = canvas.width / 2 - 25;
+            player.y = canvas.height - 60;
+            
+            createInvaders();
+            document.getElementById('gameOver').style.display = 'none';
+            updateDisplay();
+            gameLoop();
+        }
+
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            updatePlayer();
+            updateBullets();
+            updateInvaders();
+            checkCollisions();
+            checkWaveComplete();
+            
+            drawPlayer();
+            drawInvaders();
+            drawBullets();
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        document.addEventListener('keydown', (e) => {
+            enableAudio(); // Enable audio on first interaction
+            
+            switch (e.key) {
+                case 'ArrowLeft':
+                    keys.left = true;
+                    break;
+                case 'ArrowRight':
+                    keys.right = true;
+                    break;
+                case ' ':
+                    e.preventDefault();
+                    if (!keys.space && gameRunning) {
+                        shoot();
+                        keys.space = true;
+                    }
+                    break;
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            switch (e.key) {
+                case 'ArrowLeft':
+                    keys.left = false;
+                    break;
+                case 'ArrowRight':
+                    keys.right = false;
+                    break;
+                case ' ':
+                    keys.space = false;
+                    break;
+            }
+        });
+
+        // Enable audio on any click
+        document.addEventListener('click', enableAudio);
+        
+        // Initialize game
+        createInvaders();
+        updateDisplay();
+        gameLoop();
+    </script>
+</body>
+</html>
