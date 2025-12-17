@@ -3,173 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🧩 TETRIS - Retro Arcade</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-        
-        body {
-            margin: 0;
-            padding: 0;
-            background: #001100;
-            font-family: 'Courier New', monospace;
-            color: #00ff00;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            overflow: hidden;
-        }
+    <title>Tetris.exe - Arcadeium</title>
+    <link rel="stylesheet" href="retro-desktop.css">
 
-        .game-container {
-            display: flex;
-            gap: 2rem;
-            align-items: flex-start;
-            padding: 1rem;
-        }
-
-        .game-board {
-            background: #000;
-            border: 2px solid #00ff00;
-            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
-        }
-
-        .info-panel {
-            background: #000;
-            border: 2px solid #00ff00;
-            padding: 1.5rem;
-            min-width: 250px;
-            font-family: 'Courier New', monospace;
-        }
-
-        .info-panel h2 {
-            color: #00ff00;
-            margin-bottom: 1rem;
-            text-align: left;
-            font-size: 1.2rem;
-            font-weight: normal;
-        }
-
-        .score, .level, .lines {
-            margin-bottom: 0.5rem;
-            font-size: 1rem;
-            font-family: 'Courier New', monospace;
-        }
-
-        .controls {
-            margin-top: 2rem;
-            font-size: 0.8rem;
-            line-height: 1.4;
-            font-family: 'Courier New', monospace;
-        }
-
-        .controls h3 {
-            color: #00ff00;
-            margin-bottom: 0.5rem;
-            font-weight: normal;
-        }
-
-        .back-button {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            background: #00ff00;
-            border: 1px solid #00ff00;
-            color: #000;
-            padding: 8px 16px;
-            cursor: pointer;
-            font-family: 'Courier New', monospace;
-            font-weight: normal;
-            transition: all 0.3s ease;
-        }
-
-        .back-button:hover {
-            background: #000;
-            color: #00ff00;
-        }
-
-        .game-over {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #000;
-            border: 2px solid #00ff00;
-            padding: 2rem;
-            text-align: center;
-            display: none;
-            z-index: 1000;
-            font-family: 'Courier New', monospace;
-        }
-
-        .game-over h2 {
-            color: #00ff00;
-            margin-bottom: 1rem;
-            font-size: 1.5rem;
-            font-weight: normal;
-        }
-
-        .restart-button {
-            background: #00ff00;
-            border: 1px solid #00ff00;
-            color: #000;
-            padding: 8px 20px;
-            cursor: pointer;
-            font-family: 'Courier New', monospace;
-            font-weight: normal;
-            margin-top: 1rem;
-        }
-
-        .restart-button:hover {
-            background: #000;
-            color: #00ff00;
-        }
-
-        @media (max-width: 768px) {
-            .game-container {
-                flex-direction: column;
-                align-items: center;
-            }
-            
-            .info-panel {
-                min-width: auto;
-                width: 100%;
-                max-width: 300px;
-            }
-        }
-    </style>
 </head>
 <body>
-    <button class="back-button" onclick="window.location.href='index.html'">← BACK TO ARCADE</button>
-    
-    <div class="game-container">
-        <canvas id="tetris" class="game-board" width="300" height="600"></canvas>
+    <!-- Game Menu Bar -->
+    <div class="game-menu-bar">
+        <a href="index.html" class="game-menu-button">← Desktop</a>
+        <div class="game-menu-button" onclick="showHelp()">Help</div>
+        <div class="game-menu-button" onclick="pauseGame()">Pause</div>
+    </div>
+
+    <!-- Game Window -->
+    <div class="game-window">
+        <div class="window-title">
+            <span>🧩 Tetris.exe - Arcadeium Games</span>
+            <div class="window-controls">
+                <div class="window-button" onclick="minimizeWindow()">_</div>
+                <div class="window-button" onclick="window.location.href='index.html'">×</div>
+            </div>
+        </div>
         
-        <div class="info-panel">
-            <h2>🧩 TETRIS</h2>
-            <div class="score">Score: <span id="score">0</span></div>
-            <div class="level">Level: <span id="level">1</span></div>
-            <div class="lines">Lines: <span id="lines">0</span></div>
+        <div class="game-content">
+            <!-- HUD Panel -->
+            <div class="hud-panel">
+                <div class="hud-item">
+                    <span class="hud-label">Score:</span>
+                    <span class="hud-value" id="score">0</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">Level:</span>
+                    <span class="hud-value" id="level">1</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">Lines:</span>
+                    <span class="hud-value" id="lines">0</span>
+                </div>
+            </div>
+
+            <!-- Game Canvas -->
+            <canvas id="tetris"></canvas>
             
-            <div class="controls">
-                <h3>Controls:</h3>
-                <div>← → Move</div>
-                <div>↓ Soft Drop</div>
-                <div>↑ Rotate</div>
-                <div>Space: Hard Drop</div>
-                <div>P: Pause</div>
+            <!-- Control Panel -->
+            <div class="control-panel">
+                <div class="control-section">
+                    <div class="control-title">Game Controls:</div>
+                    <div class="control-text">
+                        Arrow Keys: Move/Rotate • Space: Drop • P: Pause<br>
+                        Clear horizontal lines to score points!
+                    </div>
+                </div>
+            </div>
+
+            <!-- Button Container -->
+            <div class="button-container">
+                <button class="retro-button primary" onclick="startNewGame()">New Game</button>
+                <button class="retro-button" onclick="pauseGame()">Pause</button>
+                <button class="retro-button" onclick="showHelp()">Help</button>
             </div>
         </div>
     </div>
 
-    <div class="game-over" id="gameOver">
-        <h2>GAME OVER</h2>
-        <div>Final Score: <span id="finalScore">0</span></div>
-        <button class="restart-button" onclick="restartGame()">PLAY AGAIN</button>
+    <!-- Game Over Dialog -->
+    <div class="game-over" id="gameOver" style="display: none;">
+        <h2>Game Over!</h2>
+        <p>Final Score: <span id="finalScore">0</span></p>
+        <button class="retro-button primary" onclick="startNewGame()">Play Again</button>
+        <button class="retro-button" onclick="window.location.href='index.html'">Back to Desktop</button>
     </div>
 
     <script>
         const canvas = document.getElementById('tetris');
         const ctx = canvas.getContext('2d');
+        
+        // Game configuration
+        const BLOCK_SIZE = 24;
+        const BOARD_WIDTH = 10;
+        const BOARD_HEIGHT = 20;
+        
+        // Set canvas size based on board dimensions
+        canvas.width = BOARD_WIDTH * BLOCK_SIZE;
+        canvas.height = BOARD_HEIGHT * BLOCK_SIZE;
         
         // Audio setup
         const backgroundMusic = new Audio('music/tetris_backgroundmusic.mp3');
@@ -178,17 +93,16 @@
         backgroundMusic.volume = 0.3;
         backgroundMusic.loop = true;
         lineClearSound.volume = 0.6;
-        const BLOCK_SIZE = 30;
-        const BOARD_WIDTH = 10;
-        const BOARD_HEIGHT = 20;
 
+        // Game state variables - initialize properly
         let board = Array.from({ length: BOARD_HEIGHT }, () => Array(BOARD_WIDTH).fill(0));
         let score = 0;
         let level = 1;
         let lines = 0;
         let dropTime = 0;
         let lastTime = 0;
-        let gameRunning = true;
+        let gameRunning = false; // Start as false
+        let gameOver = false; // Add explicit game over state
         let paused = false;
 
         const colors = [
@@ -388,8 +302,9 @@
             document.getElementById('lines').textContent = lines;
         }
 
-        function gameOver() {
+        function endGame() {
             gameRunning = false;
+            gameOver = true;
             
             // Stop background music
             backgroundMusic.pause();
@@ -399,21 +314,43 @@
             document.getElementById('gameOver').style.display = 'block';
         }
 
-        function restartGame() {
+        function startNewGame() {
+            // Reset all game state
             board = Array.from({ length: BOARD_HEIGHT }, () => Array(BOARD_WIDTH).fill(0));
             score = 0;
             level = 1;
             lines = 0;
             gameRunning = true;
+            gameOver = false;
             paused = false;
+            dropTime = 0;
+            lastTime = 0;
             
-            // Reset background music
-            backgroundMusic.currentTime = 0;
-            
+            // Hide game over dialog
             document.getElementById('gameOver').style.display = 'none';
+            
+            // Update display
             updateDisplay();
+            
+            // Create first piece and start game
             createPiece();
             gameLoop();
+        }
+
+        function pauseGame() {
+            if (!gameRunning || gameOver) return;
+            paused = !paused;
+            if (!paused) {
+                gameLoop();
+            }
+        }
+
+        function showHelp() {
+            alert('🧩 Tetris.exe Help\n\nObjective: Clear horizontal lines!\n\nControls:\n• Arrow Keys - Move/Rotate pieces\n• Space - Hard drop\n• P - Pause game\n\nScoring:\n• Clear lines to earn points\n• Level increases every 10 lines\n• Higher levels = faster speed\n\nGood luck!');
+        }
+
+        function minimizeWindow() {
+            alert('💻 Minimize\n\nWindow minimized to taskbar!\n(This is just a demo)');
         }
 
         function gameLoop(time = 0) {
@@ -440,7 +377,7 @@
                     createPiece();
                     
                     if (!isValidMove(currentPiece.shape, currentPiece.x, currentPiece.y)) {
-                        gameOver();
+                        endGame();
                         return;
                     }
                 }
@@ -454,22 +391,26 @@
         }
 
         document.addEventListener('keydown', (e) => {
-            if (!gameRunning) return;
+            if (!gameRunning || gameOver) return;
             
             switch (e.key) {
                 case 'ArrowLeft':
+                    e.preventDefault();
                     movePiece(-1, 0);
                     break;
                 case 'ArrowRight':
+                    e.preventDefault();
                     movePiece(1, 0);
                     break;
                 case 'ArrowDown':
+                    e.preventDefault();
                     if (movePiece(0, 1)) {
                         score += 1;
                         updateDisplay();
                     }
                     break;
                 case 'ArrowUp':
+                    e.preventDefault();
                     rotatePiece();
                     break;
                 case ' ':
@@ -479,16 +420,16 @@
                     break;
                 case 'p':
                 case 'P':
-                    paused = !paused;
-                    if (!paused) gameLoop();
+                    pauseGame();
                     break;
             }
         });
 
-        // Initialize game
-        createPiece();
+        // Initialize display only - don't start game automatically
         updateDisplay();
-        gameLoop();
+        
+        // Draw empty board
+        drawBoard();
     </script>
 </body>
 </html>

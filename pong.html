@@ -1,111 +1,74 @@
-<!-- Save as pong.html -->
 <!DOCTYPE html>
 <html>
 <head>
-  <title>🏓 PONG - Retro Arcade</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-    
-    body {
-      margin: 0;
-      background: linear-gradient(45deg, #0a0a0a, #1a0a2e, #16213e);
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      font-family: 'Orbitron', monospace;
-      color: #00ffff;
-    }
-    
-    h1 {
-      font-size: 3rem;
-      background: linear-gradient(90deg, #ff00ff, #00ffff, #ff00ff);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      text-shadow: 0 0 20px #00ffff;
-      margin-bottom: 1rem;
-    }
-    
-    canvas {
-      background: black;
-      display: block;
-      border: 3px solid #00ffff;
-      border-radius: 10px;
-      box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
-    }
-    
-    .back-button {
-      position: fixed;
-      top: 20px;
-      left: 20px;
-      background: linear-gradient(45deg, #ff00ff, #00ffff);
-      border: none;
-      color: #000;
-      padding: 10px 20px;
-      border-radius: 20px;
-      cursor: pointer;
-      font-family: 'Orbitron', monospace;
-      font-weight: 700;
-      transition: all 0.3s ease;
-    }
-
-    .back-button:hover {
-      transform: scale(1.1);
-      box-shadow: 0 5px 15px rgba(255, 0, 255, 0.5);
-    }
-
-    p {
-      margin-top: 1rem;
-      font-size: 1.1rem;
-      color: #00ffff;
-      text-shadow: 0 0 10px #00ffff;
-    }
-
-    .game-over {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(0, 0, 0, 0.9);
-      border: 3px solid #ff00ff;
-      border-radius: 15px;
-      padding: 2rem;
-      text-align: center;
-      display: none;
-      z-index: 1000;
-    }
-
-    .game-over h2 {
-      color: #ff00ff;
-      margin-bottom: 1rem;
-      font-size: 2rem;
-    }
-
-    .restart-button {
-      background: linear-gradient(45deg, #00ffff, #ff00ff);
-      border: none;
-      color: #000;
-      padding: 12px 30px;
-      border-radius: 25px;
-      cursor: pointer;
-      font-family: 'Orbitron', monospace;
-      font-weight: 700;
-      margin-top: 1rem;
-    }
-  </style>
+  <title>Pong.exe - Arcadeium</title>
+  <link rel="stylesheet" href="retro-desktop.css">
 </head>
 <body>
-  <button class="back-button" onclick="window.location.href='index.html'">← BACK TO ARCADE</button>
-  <h1>🏓 PONG</h1>
-  <canvas id="pong" width="600" height="400"></canvas>
-  <p>Move your mouse to control the paddle</p>
-  <div class="game-over" id="gameOver">
-    <h2 id="gameOverTitle">GAME OVER</h2>
-    <div>Player Score: <span id="playerScore">0</span></div>
-    <div>AI Score: <span id="aiScore">0</span></div>
-    <button class="restart-button" onclick="restartGame()">PLAY AGAIN</button>
+  <!-- Game Menu Bar -->
+  <div class="game-menu-bar">
+    <a href="index.html" class="game-menu-button">← Desktop</a>
+    <div class="game-menu-button" onclick="showHelp()">Help</div>
+    <div class="game-menu-button" onclick="pauseGame()">Pause</div>
+  </div>
+
+  <!-- Game Window -->
+  <div class="game-window">
+    <div class="window-title">
+      <span>🏓 Pong.exe - Arcadeium Games</span>
+      <div class="window-controls">
+        <div class="window-button" onclick="minimizeWindow()">_</div>
+        <div class="window-button" onclick="window.location.href='index.html'">×</div>
+      </div>
+    </div>
+    
+    <div class="game-content">
+      <!-- HUD Panel -->
+      <div class="hud-panel">
+        <div class="hud-item">
+          <span class="hud-label">Player:</span>
+          <span class="hud-value" id="playerScoreDisplay">0</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">Computer:</span>
+          <span class="hud-value" id="aiScoreDisplay">0</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">Speed:</span>
+          <span class="hud-value" id="speedDisplay">1.0x</span>
+        </div>
+      </div>
+
+      <!-- Game Canvas -->
+      <canvas id="pong" width="560" height="320"></canvas>
+      
+      <!-- Control Panel -->
+      <div class="control-panel">
+        <div class="control-section">
+          <div class="control-title">Game Controls:</div>
+          <div class="control-text">
+            Mouse Movement: Control your paddle (left side)<br>
+            First to 10 points wins! Ball speed increases with each hit.
+          </div>
+        </div>
+      </div>
+
+      <!-- Button Container -->
+      <div class="button-container">
+        <button class="retro-button primary" onclick="restartGame()">New Game</button>
+        <button class="retro-button" onclick="pauseGame()">Pause</button>
+        <button class="retro-button" onclick="showHelp()">Help</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Over Dialog -->
+  <div class="game-over" id="gameOver" style="display: none;">
+    <h2 id="gameOverTitle">Game Over!</h2>
+    <p>Player Score: <span id="playerScore">0</span></p>
+    <p>Computer Score: <span id="aiScore">0</span></p>
+    <button class="retro-button primary" onclick="restartGame()">Play Again</button>
+    <button class="retro-button" onclick="window.location.href='index.html'">Back to Desktop</button>
   </div>
 
   <script>
@@ -284,14 +247,41 @@
       gameRunning = true;
       resetBall();
       document.getElementById('gameOver').style.display = 'none';
+      updateHUD();
+    }
+
+    function updateHUD() {
+      document.getElementById('playerScoreDisplay').textContent = player.score;
+      document.getElementById('aiScoreDisplay').textContent = ai.score;
+      document.getElementById('speedDisplay').textContent = ball.currentSpeed.toFixed(1) + 'x';
+    }
+
+    function showHelp() {
+      alert('🏓 Pong.exe Help\n\nObjective: Beat the computer to 10 points!\n\nControls:\n• Mouse - Move your paddle (left side)\n\nGameplay:\n• Ball speed increases with each hit\n• Hit different parts of paddle for angle shots\n• First to 10 points wins!\n\nGood luck!');
+    }
+
+    function pauseGame() {
+      gameRunning = !gameRunning;
+      if (gameRunning) {
+        alert('Game Resumed!');
+      } else {
+        alert('Game Paused!\nClick OK to resume.');
+        gameRunning = true;
+      }
+    }
+
+    function minimizeWindow() {
+      alert('💻 Minimize\n\nWindow minimized to taskbar!\n(This is just a demo)');
     }
 
     function game() {
       update();
       draw();
+      updateHUD();
     }
 
     canvas.addEventListener("mousemove", movePaddle);
+    updateHUD();
     setInterval(game, 1000 / 60);
   </script>
 </body>

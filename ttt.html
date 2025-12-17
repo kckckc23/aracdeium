@@ -1,131 +1,79 @@
-<!-- Save as tictactoe.html -->
 <!DOCTYPE html>
 <html>
 <head>
-  <title>🎯 TIC-TAC-TOE - Retro Arcade</title>
+  <title>TicTac.exe - Arcadeium</title>
+  <link rel="stylesheet" href="retro-desktop.css">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-    
-    body {
-      margin: 0;
-      padding: 20px;
-      background: linear-gradient(45deg, #0a0a0a, #1a0a2e, #16213e);
-      font-family: 'Orbitron', monospace;
-      color: #00ffff;
-      min-height: 100vh;
-      text-align: center;
-    }
-    
-    h2 {
-      font-size: 3rem;
-      background: linear-gradient(90deg, #ff00ff, #00ffff, #ff00ff);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      text-shadow: 0 0 20px #00ffff;
-      margin-bottom: 2rem;
-    }
-    
-    #board {
-      display: grid;
-      grid-template-columns: repeat(3, 100px);
-      grid-gap: 5px;
-      margin: 50px auto;
-      width: 315px;
-    }
-    
-    .cell {
-      width: 100px;
-      height: 100px;
-      background: linear-gradient(145deg, #1a1a2e, #16213e);
-      border: 2px solid #00ffff;
-      font-size: 3em;
-      text-align: center;
-      line-height: 100px;
-      cursor: pointer;
-      color: #ff00ff;
-      font-weight: bold;
-      border-radius: 10px;
-      transition: all 0.3s ease;
-      box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
-    }
-    
-    .cell:hover {
-      transform: scale(1.05);
-      border-color: #ff00ff;
-      box-shadow: 0 0 20px rgba(255, 0, 255, 0.5);
-    }
-    
-    .back-button {
-      position: fixed;
-      top: 20px;
-      left: 20px;
-      background: linear-gradient(45deg, #ff00ff, #00ffff);
-      border: none;
-      color: #000;
-      padding: 10px 20px;
-      border-radius: 20px;
-      cursor: pointer;
-      font-family: 'Orbitron', monospace;
-      font-weight: 700;
-      transition: all 0.3s ease;
-    }
-
-    .back-button:hover {
-      transform: scale(1.1);
-      box-shadow: 0 5px 15px rgba(255, 0, 255, 0.5);
-    }
-
+    /* Override any remaining neon styles - use flat retro OS styling only */
     #status {
-      font-size: 1.5rem;
-      color: #00ffff;
-      text-shadow: 0 0 10px #00ffff;
-      margin-top: 2rem;
-    }
-
-    .game-over {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(0, 0, 0, 0.9);
-      border: 3px solid #ff00ff;
-      border-radius: 15px;
-      padding: 2rem;
-      text-align: center;
-      display: none;
-      z-index: 1000;
-    }
-
-    .game-over h2 {
-      color: #ff00ff;
-      margin-bottom: 1rem;
-      font-size: 2rem;
-    }
-
-    .restart-button {
-      background: linear-gradient(45deg, #00ffff, #ff00ff);
-      border: none;
-      color: #000;
-      padding: 12px 30px;
-      border-radius: 25px;
-      cursor: pointer;
-      font-family: 'Orbitron', monospace;
-      font-weight: 700;
-      margin-top: 1rem;
+      font-size: 12px;
+      color: #2f4f4f;
+      margin-top: 16px;
     }
   </style>
 </head>
 <body>
-  <button class="back-button" onclick="window.location.href='index.html'">← BACK TO ARCADE</button>
-  <h2>🎯 TIC-TAC-TOE</h2>
-  <div id="board"></div>
-  <p id="status" style="text-align:center;"></p>
+  <!-- Game Menu Bar -->
+  <div class="game-menu-bar">
+    <a href="index.html" class="game-menu-button">← Desktop</a>
+    <div class="game-menu-button" onclick="showHelp()">Help</div>
+    <div class="game-menu-button" onclick="resetGame()">New Game</div>
+  </div>
 
-  <div class="game-over" id="gameOver">
-    <h2 id="gameOverTitle">GAME OVER</h2>
-    <div id="gameResult"></div>
-    <button class="restart-button" onclick="restartGame()">PLAY AGAIN</button>
+  <!-- Game Window -->
+  <div class="game-window">
+    <div class="window-title">
+      <span>⭕ TicTac.exe - Arcadeium Games</span>
+      <div class="window-controls">
+        <div class="window-button" onclick="minimizeWindow()">_</div>
+        <div class="window-button" onclick="window.location.href='index.html'">×</div>
+      </div>
+    </div>
+    
+    <div class="game-content">
+      <!-- HUD Panel -->
+      <div class="hud-panel">
+        <div class="hud-item">
+          <span class="hud-label">Current Player:</span>
+          <span class="hud-value" id="currentPlayerDisplay">X</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">Game Status:</span>
+          <span class="hud-value" id="gameStatus">Playing</span>
+        </div>
+      </div>
+
+      <!-- Game Board -->
+      <div style="text-align: center; margin: 20px 0;">
+        <div id="board"></div>
+        <p id="status" style="margin-top: 16px; font-size: 12px;"></p>
+      </div>
+      
+      <!-- Control Panel -->
+      <div class="control-panel">
+        <div class="control-section">
+          <div class="control-title">Game Rules:</div>
+          <div class="control-text">
+            Click any empty square to place your mark (X or O)<br>
+            Get three in a row horizontally, vertically, or diagonally to win!
+          </div>
+        </div>
+      </div>
+
+      <!-- Button Container -->
+      <div class="button-container">
+        <button class="retro-button primary" onclick="resetGame()">New Game</button>
+        <button class="retro-button" onclick="showHelp()">Help</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Over Dialog -->
+  <div class="game-over" id="gameOver" style="display: none;">
+    <h2 id="gameOverTitle">Game Over!</h2>
+    <p id="gameResult"></p>
+    <button class="retro-button primary" onclick="resetGame()">Play Again</button>
+    <button class="retro-button" onclick="window.location.href='index.html'">Back to Desktop</button>
   </div>
 
   <script>
@@ -149,13 +97,17 @@
     function makeMove(i) {
       if (cells[i] === '' && !gameOver) {
         cells[i] = currentPlayer;
+        updateHUD();
+        
         if (checkWin()) {
           status.textContent = `${currentPlayer} wins!`;
           gameOver = true;
+          document.getElementById('gameStatus').textContent = `${currentPlayer} Wins!`;
           showGameOver(`${currentPlayer} WINS!`);
         } else if (!cells.includes('')) {
           status.textContent = `It's a draw!`;
           gameOver = true;
+          document.getElementById('gameStatus').textContent = 'Draw';
           showGameOver("IT'S A DRAW!");
         } else {
           currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
@@ -165,18 +117,34 @@
       }
     }
 
+    function updateHUD() {
+      document.getElementById('currentPlayerDisplay').textContent = currentPlayer;
+      if (!gameOver) {
+        document.getElementById('gameStatus').textContent = 'Playing';
+      }
+    }
+
     function showGameOver(result) {
       document.getElementById('gameResult').textContent = result;
       document.getElementById('gameOver').style.display = 'block';
     }
 
-    function restartGame() {
+    function resetGame() {
       cells = Array(9).fill('');
       currentPlayer = 'X';
       gameOver = false;
       status.textContent = "Player X's turn";
       document.getElementById('gameOver').style.display = 'none';
+      updateHUD();
       renderBoard();
+    }
+
+    function showHelp() {
+      alert('⭕ TicTac.exe Help\n\nObjective: Get three in a row!\n\nRules:\n• Players take turns placing X and O\n• First to get 3 in a row wins\n• Rows can be horizontal, vertical, or diagonal\n• If all squares are filled with no winner, it\'s a draw\n\nGood luck!');
+    }
+
+    function minimizeWindow() {
+      alert('💻 Minimize\n\nWindow minimized to taskbar!\n(This is just a demo)');
     }
 
     function checkWin() {
@@ -191,7 +159,9 @@
       });
     }
 
+    // Initialize game
     status.textContent = "Player X's turn";
+    updateHUD();
     renderBoard();
   </script>
 </body>

@@ -3,161 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>👻 PAC-MAN - Retro Arcade</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-        
-        body {
-            margin: 0;
-            padding: 0;
-            background: linear-gradient(45deg, #0a0a0a, #1a0a2e, #16213e);
-            font-family: 'Orbitron', monospace;
-            color: #00ffff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            overflow: hidden;
-        }
+    <title>PacMan.exe - Arcadeium</title>
+    <link rel="stylesheet" href="retro-desktop.css">
 
-        .game-container {
-            display: flex;
-            gap: 2rem;
-            align-items: flex-start;
-            padding: 1rem;
-        }
-
-        .game-board {
-            background: #000;
-            border: 3px solid #00ffff;
-            border-radius: 10px;
-            box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
-        }
-
-        .info-panel {
-            background: linear-gradient(145deg, #1a1a2e, #16213e);
-            border: 2px solid #ff00ff;
-            border-radius: 10px;
-            padding: 1.5rem;
-            min-width: 200px;
-            box-shadow: 0 0 20px rgba(255, 0, 255, 0.3);
-        }
-
-        .info-panel h2 {
-            color: #ff00ff;
-            margin-bottom: 1rem;
-            text-align: center;
-            font-size: 1.5rem;
-        }
-
-        .score, .lives, .level {
-            margin-bottom: 1rem;
-            font-size: 1.1rem;
-        }
-
-        .controls {
-            margin-top: 2rem;
-            font-size: 0.9rem;
-            line-height: 1.6;
-        }
-
-        .controls h3 {
-            color: #00ffff;
-            margin-bottom: 0.5rem;
-        }
-
-        .back-button {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            background: linear-gradient(45deg, #ff00ff, #00ffff);
-            border: none;
-            color: #000;
-            padding: 10px 20px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-family: 'Orbitron', monospace;
-            font-weight: 700;
-            transition: all 0.3s ease;
-        }
-
-        .back-button:hover {
-            transform: scale(1.1);
-            box-shadow: 0 5px 15px rgba(255, 0, 255, 0.5);
-        }
-
-        .game-over {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.9);
-            border: 3px solid #ff00ff;
-            border-radius: 15px;
-            padding: 2rem;
-            text-align: center;
-            display: none;
-            z-index: 1000;
-        }
-
-        .game-over h2 {
-            color: #ff00ff;
-            margin-bottom: 1rem;
-            font-size: 2rem;
-        }
-
-        .restart-button {
-            background: linear-gradient(45deg, #00ffff, #ff00ff);
-            border: none;
-            color: #000;
-            padding: 12px 30px;
-            border-radius: 25px;
-            cursor: pointer;
-            font-family: 'Orbitron', monospace;
-            font-weight: 700;
-            margin-top: 1rem;
-        }
-
-        @media (max-width: 768px) {
-            .game-container {
-                flex-direction: column;
-                align-items: center;
-            }
-            
-            .info-panel {
-                min-width: auto;
-                width: 100%;
-                max-width: 300px;
-            }
-        }
-    </style>
 </head>
 <body>
-    <button class="back-button" onclick="window.location.href='index.html'">← BACK TO ARCADE</button>
-    
-    <div class="game-container">
-        <canvas id="pacman" class="game-board" width="600" height="600"></canvas>
+    <!-- Game Menu Bar -->
+    <div class="game-menu-bar">
+        <a href="index.html" class="game-menu-button">← Desktop</a>
+        <div class="game-menu-button" onclick="showHelp()">Help</div>
+        <div class="game-menu-button" onclick="pauseGame()">Pause</div>
+    </div>
+
+    <!-- Game Window -->
+    <div class="game-window">
+        <div class="window-title">
+            <span>👻 PacMan.exe - Arcadeium Games</span>
+            <div class="window-controls">
+                <div class="window-button" onclick="minimizeWindow()">_</div>
+                <div class="window-button" onclick="window.location.href='index.html'">×</div>
+            </div>
+        </div>
         
-        <div class="info-panel">
-            <h2>👻 PAC-MAN</h2>
-            <div class="score">Score: <span id="score">0</span></div>
-            <div class="lives">Lives: <span id="lives">3</span></div>
-            <div class="level">Level: <span id="level">1</span></div>
+        <div class="game-content">
+            <!-- HUD Panel -->
+            <div class="hud-panel">
+                <div class="hud-item">
+                    <span class="hud-label">Score:</span>
+                    <span class="hud-value" id="score">0</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">Lives:</span>
+                    <span class="hud-value" id="lives">3</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label">Level:</span>
+                    <span class="hud-value" id="level">1</span>
+                </div>
+            </div>
+
+            <!-- Game Canvas -->
+            <canvas id="pacman" width="560" height="560"></canvas>
             
-            <div class="controls">
-                <h3>Controls:</h3>
-                <div>← → ↑ ↓ Move</div>
-                <div>WASD: Alternative</div>
-                <div>Eat all dots to win!</div>
-                <div>Avoid the ghosts!</div>
+            <!-- Control Panel -->
+            <div class="control-panel">
+                <div class="control-section">
+                    <div class="control-title">Game Controls:</div>
+                    <div class="control-text">
+                        Arrow Keys or WASD: Move Pac-Man around the maze<br>
+                        Eat all dots while avoiding the ghosts!
+                    </div>
+                </div>
+            </div>
+
+            <!-- Button Container -->
+            <div class="button-container">
+                <button class="retro-button primary" onclick="startNewGame()">New Game</button>
+                <button class="retro-button" onclick="pauseGame()">Pause</button>
+                <button class="retro-button" onclick="showHelp()">Help</button>
             </div>
         </div>
     </div>
 
-    <div class="game-over" id="gameOver">
-        <h2 id="gameOverTitle">GAME OVER</h2>
-        <div>Final Score: <span id="finalScore">0</span></div>
-        <button class="restart-button" onclick="restartGame()">PLAY AGAIN</button>
+    <!-- Game Over Dialog -->
+    <div class="game-over" id="gameOver" style="display: none;">
+        <h2 id="gameOverTitle">Game Over!</h2>
+        <p>Final Score: <span id="finalScore">0</span></p>
+        <button class="retro-button primary" onclick="startNewGame()">Play Again</button>
+        <button class="retro-button" onclick="window.location.href='index.html'">Back to Desktop</button>
     </div>
 
     <script>
@@ -564,6 +477,25 @@
             document.getElementById('gameOver').style.display = 'none';
             initGame();
             gameLoop();
+        }
+
+        function startNewGame() {
+            restartGame();
+        }
+
+        function pauseGame() {
+            gameRunning = !gameRunning;
+            if (gameRunning) {
+                gameLoop();
+            }
+        }
+
+        function showHelp() {
+            alert('👻 PacMan.exe Help\n\nObjective: Eat all dots to clear the level!\n\nControls:\n• Arrow Keys or WASD - Move Pac-Man\n\nGameplay:\n• Eat dots for points\n• Power pellets make ghosts vulnerable\n• Avoid ghosts unless they\'re blue\n• Clear all dots to advance\n\nGood luck!');
+        }
+
+        function minimizeWindow() {
+            alert('💻 Minimize\n\nWindow minimized to taskbar!\n(This is just a demo)');
         }
 
         function gameLoop() {

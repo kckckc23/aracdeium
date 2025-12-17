@@ -4,9 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🕹️ RETRO ARCADE 🕹️</title>
+    <title>Arcadeium - Retro Desktop</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Press+Start+2P&display=swap');
 
         * {
             margin: 0;
@@ -15,346 +15,417 @@
         }
 
         body {
-            background: linear-gradient(45deg, #0a0a0a, #1a0a2e, #16213e);
-            font-family: 'Orbitron', monospace;
-            color: #00ffff;
-            overflow-x: hidden;
-            min-height: 100vh;
+            font-family: 'Silkscreen', 'Press Start 2P', monospace;
+            font-size: 11px;
+            background: 
+                linear-gradient(180deg, 
+                    #e6f3ff 0%, 
+                    #cce7ff 20%, 
+                    #b3dbff 40%, 
+                    #99cfff 60%, 
+                    #80c3ff 80%, 
+                    #66b7ff 100%
+                );
+            height: 100vh;
+            overflow: hidden;
+            cursor: default;
+            user-select: none;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
         }
 
-        .stars {
+        /* CRT Effect Overlay */
+        body::before {
+            content: '';
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
+            background: 
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(0, 0, 0, 0.03) 2px,
+                    rgba(0, 0, 0, 0.03) 4px
+                ),
+                radial-gradient(ellipse at center, transparent 0%, rgba(0, 0, 0, 0.1) 100%);
             pointer-events: none;
-            z-index: -1;
+            z-index: 9999;
         }
 
-        .star {
-            position: absolute;
-            background: #fff;
-            border-radius: 50%;
-            animation: twinkle 2s infinite;
-        }
-
-        @keyframes twinkle {
-
-            0%,
-            100% {
-                opacity: 0.3;
-            }
-
-            50% {
-                opacity: 1;
-            }
-        }
-
-        .header {
-            text-align: center;
-            padding: 2rem 0;
-            background: linear-gradient(90deg, #ff00ff, #00ffff, #ff00ff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            animation: glow 2s ease-in-out infinite alternate;
-        }
-
-        .header h1 {
-            font-size: 4rem;
-            font-weight: 900;
-            text-shadow: 0 0 20px #00ffff;
-            margin-bottom: 0.5rem;
-        }
-
-        .header p {
-            font-size: 1.2rem;
-            color: #00ffff;
-            text-shadow: 0 0 10px #00ffff;
-        }
-
-        @keyframes glow {
-            from {
-                text-shadow: 0 0 20px #00ffff, 0 0 30px #00ffff, 0 0 40px #00ffff;
-            }
-
-            to {
-                text-shadow: 0 0 30px #ff00ff, 0 0 40px #ff00ff, 0 0 50px #ff00ff;
-            }
-        }
-
-        .game-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-            padding: 2rem;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .game-card {
-            background: linear-gradient(145deg, #1a1a2e, #16213e);
-            border: 2px solid #00ffff;
-            border-radius: 15px;
-            padding: 1.5rem;
-            text-align: center;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .game-card::before {
+        /* Subtle noise texture */
+        body::after {
             content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(45deg, transparent, rgba(0, 255, 255, 0.1), transparent);
-            transform: rotate(45deg);
-            transition: all 0.5s;
-            opacity: 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.02;
+            background-image: 
+                radial-gradient(circle at 25% 25%, #000 1px, transparent 1px),
+                radial-gradient(circle at 75% 75%, #000 1px, transparent 1px);
+            background-size: 4px 4px;
+            background-position: 0 0, 2px 2px;
+            pointer-events: none;
+            z-index: 9998;
         }
 
-        .game-card:hover::before {
-            animation: shine 0.5s ease-in-out;
-        }
-
-        @keyframes shine {
-            0% {
-                transform: translateX(-100%) translateY(-100%) rotate(45deg);
-                opacity: 0;
-            }
-
-            50% {
-                opacity: 1;
-            }
-
-            100% {
-                transform: translateX(100%) translateY(100%) rotate(45deg);
-                opacity: 0;
-            }
-        }
-
-        .game-card:hover {
-            transform: translateY(-10px) scale(1.05);
-            border-color: #ff00ff;
-            box-shadow: 0 10px 30px rgba(255, 0, 255, 0.3);
-        }
-
-        .game-icon {
-            font-size: 4rem;
-            margin-bottom: 1rem;
-            display: block;
-        }
-
-        .game-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            color: #00ffff;
-        }
-
-        .game-description {
-            font-size: 0.9rem;
-            color: #aaa;
-            margin-bottom: 1.5rem;
-            line-height: 1.4;
-        }
-
-        .play-button {
-            background: linear-gradient(45deg, #ff00ff, #00ffff);
-            border: none;
-            color: #000;
-            padding: 12px 30px;
-            font-size: 1rem;
-            font-weight: 700;
-            border-radius: 25px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-family: 'Orbitron', monospace;
-        }
-
-        .play-button:hover {
-            transform: scale(1.1);
-            box-shadow: 0 5px 20px rgba(255, 0, 255, 0.5);
-        }
-
-        .footer {
-            text-align: center;
-            padding: 2rem;
-            color: #666;
-            font-size: 0.9rem;
-        }
-
-        .neon-border {
+        .desktop {
             position: relative;
+            width: 100%;
+            height: 100vh;
+            background-image: 
+                radial-gradient(ellipse at 30% 70%, rgba(255, 255, 255, 0.3) 0%, transparent 40%),
+                radial-gradient(ellipse at 70% 30%, rgba(255, 255, 255, 0.2) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 60%);
+            filter: blur(0.5px);
         }
 
-        .neon-border::after {
-            content: '';
-            position: absolute;
+        /* Top Menu Bar */
+        .menu-bar {
+            position: fixed;
             top: 0;
             left: 0;
             right: 0;
-            bottom: 0;
-            border: 2px solid #00ffff;
-            border-radius: 15px;
-            animation: neon-pulse 2s infinite;
-            pointer-events: none;
+            height: 24px;
+            background: #f5deb3;
+            border-bottom: 2px solid #d2b48c;
+            display: flex;
+            align-items: center;
+            padding: 0 8px;
+            z-index: 1001;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
-        @keyframes neon-pulse {
+        .menu-button {
+            height: 18px;
+            padding: 0 12px;
+            background: #f5deb3;
+            border: 1px solid #d2b48c;
+            font-family: 'Silkscreen', monospace;
+            font-size: 9px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            margin-right: 4px;
+            color: #8b4513;
+        }
 
-            0%,
-            100% {
-                box-shadow: 0 0 5px #00ffff, 0 0 10px #00ffff, 0 0 15px #00ffff;
-                opacity: 1;
-            }
+        .menu-button:hover {
+            background: #faebd7;
+            border: 1px solid #cd853f;
+        }
 
-            50% {
-                box-shadow: 0 0 10px #ff00ff, 0 0 20px #ff00ff, 0 0 30px #ff00ff;
-                opacity: 0.8;
-            }
+        .menu-button:active {
+            background: #deb887;
+        }
+
+        .taskbar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 28px;
+            background: #f0e68c;
+            border-top: 2px solid #daa520;
+            display: flex;
+            align-items: center;
+            padding: 0 4px;
+            z-index: 1000;
+            box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .start-button {
+            height: 22px;
+            padding: 0 16px;
+            background: #ffb6c1;
+            border: 2px outset #ffb6c1;
+            font-family: 'Silkscreen', monospace;
+            font-size: 9px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: #8b008b;
+        }
+
+        .start-button:active {
+            border: 2px inset #ffb6c1;
+        }
+
+        .start-icon {
+            width: 12px;
+            height: 12px;
+            background: 
+                linear-gradient(45deg, 
+                    #ff69b4 0%, #ff69b4 25%, 
+                    #ffd700 25%, #ffd700 50%, 
+                    #32cd32 50%, #32cd32 75%, 
+                    #1e90ff 75%, #1e90ff 100%
+                );
+            image-rendering: pixelated;
+        }
+
+        .clock {
+            margin-left: auto;
+            padding: 0 8px;
+            height: 22px;
+            background: #e6e6fa;
+            border: 2px inset #e6e6fa;
+            display: flex;
+            align-items: center;
+            font-size: 9px;
+            font-family: 'Silkscreen', monospace;
+            color: #4b0082;
+        }
+
+        .desktop-icon {
+            position: absolute;
+            width: 64px;
+            height: 84px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            padding: 2px;
+            image-rendering: pixelated;
+        }
+
+        .desktop-icon:hover {
+            background-color: rgba(173, 216, 230, 0.3);
+            border: 1px dotted #4169e1;
+        }
+
+        .desktop-icon.selected {
+            background-color: rgba(173, 216, 230, 0.6);
+            border: 1px dotted #4169e1;
+        }
+
+        .icon-image {
+            width: 32px;
+            height: 32px;
+            margin-bottom: 2px;
+            background: #f5f5dc;
+            border: 2px outset #f5f5dc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            image-rendering: pixelated;
+            box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        .icon-label {
+            background: rgba(245, 245, 220, 0.9);
+            color: #2f4f4f;
+            font-size: 8px;
+            text-align: center;
+            line-height: 10px;
+            word-wrap: break-word;
+            max-width: 58px;
+            padding: 1px 2px;
+            border: 1px solid #d2b48c;
+            font-family: 'Silkscreen', monospace;
+            font-weight: bold;
+        }
+
+        .recycle-bin {
+            top: 40px;
+            left: 20px;
+        }
+
+        .recycle-bin .icon-image {
+            background: #e6e6fa;
+            border: 2px outset #e6e6fa;
+        }
+
+        /* Game Icons Positioning */
+        .snake-icon { top: 40px; left: 100px; }
+        .pong-icon { top: 40px; left: 180px; }
+        .tetris-icon { top: 140px; left: 20px; }
+        .spaceinvaders-icon { top: 140px; left: 100px; }
+        .pacman-icon { top: 140px; left: 180px; }
+        .ttt-icon { top: 240px; left: 20px; }
+
+        /* Game-specific icon colors - muted pastels */
+        .snake-icon .icon-image { 
+            background: #98fb98;
+            border: 2px outset #98fb98;
+        }
+        .pong-icon .icon-image { 
+            background: #ffb6c1;
+            border: 2px outset #ffb6c1;
+        }
+        .tetris-icon .icon-image { 
+            background: #87ceeb;
+            border: 2px outset #87ceeb;
+        }
+        .spaceinvaders-icon .icon-image { 
+            background: #dda0dd;
+            border: 2px outset #dda0dd;
+        }
+        .pacman-icon .icon-image { 
+            background: #f0e68c;
+            border: 2px outset #f0e68c;
+        }
+        .ttt-icon .icon-image { 
+            background: #ffd4c4;
+            border: 2px outset #ffd4c4;
         }
 
         @media (max-width: 768px) {
-            .header h1 {
-                font-size: 2.5rem;
+            .desktop-icon {
+                width: 56px;
+                height: 70px;
             }
-
-            .game-grid {
-                grid-template-columns: 1fr;
-                padding: 1rem;
+            
+            .icon-image {
+                width: 28px;
+                height: 28px;
+                font-size: 16px;
             }
-
-            .game-card {
-                padding: 1rem;
+            
+            .icon-label {
+                font-size: 10px;
+                max-width: 52px;
             }
         }
     </style>
 </head>
 
 <body>
-    <div class="stars" id="stars"></div>
+    <!-- Top Menu Bar -->
+    <div class="menu-bar">
+        <div class="menu-button" onclick="switchTheme()">Switch Theme</div>
+        <div class="menu-button" onclick="aboutComputer()">About this Computer</div>
+        <div class="menu-button" onclick="fancyChat()">Fancy to Chat?</div>
+    </div>
 
-    <header class="header">
-        <h1>🕹️ RETRO ARCADE 🕹️</h1>
-        <p>Choose Your Game and Enter the Neon Zone</p>
-    </header>
-
-    <main class="game-grid">
-        <div class="game-card neon-border">
-            <span class="game-icon">🐍</span>
-            <h2 class="game-title">SNAKE</h2>
-            <p class="game-description">Classic snake game! Eat the food, grow longer, don't hit the walls or yourself!
-            </p>
-            <button class="play-button" onclick="playGame('snakes.html')">PLAY NOW</button>
+    <div class="desktop">
+        <!-- Recycle Bin -->
+        <div class="desktop-icon recycle-bin" onclick="selectIcon(this)">
+            <div class="icon-image">🗑</div>
+            <div class="icon-label">Recycle Bin</div>
         </div>
 
-        <div class="game-card neon-border">
-            <span class="game-icon">🏓</span>
-            <h2 class="game-title">PONG</h2>
-            <p class="game-description">The original arcade classic! Move your paddle and beat the AI in this retro
-                tennis game!</p>
-            <button class="play-button" onclick="playGame('pong.html')">PLAY NOW</button>
+        <!-- Game Icons -->
+        <div class="desktop-icon snake-icon" onclick="selectIcon(this)" ondblclick="playGame('snakes.html')">
+            <div class="icon-image">🐍</div>
+            <div class="icon-label">Snake.exe</div>
         </div>
 
-        <div class="game-card neon-border">
-            <span class="game-icon">🎯</span>
-            <h2 class="game-title">TIC-TAC-TOE</h2>
-            <p class="game-description">Strategic classic! Get three in a row before your opponent does!</p>
-            <button class="play-button" onclick="playGame('ttt.html')">PLAY NOW</button>
+        <div class="desktop-icon pong-icon" onclick="selectIcon(this)" ondblclick="playGame('pong.html')">
+            <div class="icon-image">🏓</div>
+            <div class="icon-label">Pong.exe</div>
         </div>
 
-        <div class="game-card neon-border">
-            <span class="game-icon">�</span>
-            <h2 class="game-title">SPACE INVADERS</h2>
-            <p class="game-description">Defend Earth from alien invasion! Shoot the invaders before they reach you in
-                this arcade classic!</p>
-            <button class="play-button" onclick="playGame('spaceinvaders.html')">PLAY NOW</button>
+        <div class="desktop-icon tetris-icon" onclick="selectIcon(this)" ondblclick="playGame('tetris.html')">
+            <div class="icon-image">🧩</div>
+            <div class="icon-label">Tetris.exe</div>
         </div>
 
-        <div class="game-card neon-border">
-            <span class="game-icon">🧩</span>
-            <h2 class="game-title">TETRIS</h2>
-            <p class="game-description">The legendary falling blocks puzzle! Rotate and fit pieces to clear lines!</p>
-            <button class="play-button" onclick="playGame('tetris.html')">PLAY NOW</button>
+        <div class="desktop-icon spaceinvaders-icon" onclick="selectIcon(this)" ondblclick="playGame('spaceinvaders.html')">
+            <div class="icon-image">👾</div>
+            <div class="icon-label">Invaders.exe</div>
         </div>
 
-        <div class="game-card neon-border">
-            <span class="game-icon">👻</span>
-            <h2 class="game-title">PAC-MAN</h2>
-            <p class="game-description">Chomp dots and avoid ghosts in this arcade legend! Navigate the maze and get the
-                high score!</p>
-            <button class="play-button" onclick="playGame('pacman.html')">PLAY NOW</button>
+        <div class="desktop-icon pacman-icon" onclick="selectIcon(this)" ondblclick="playGame('pacman.html')">
+            <div class="icon-image">👻</div>
+            <div class="icon-label">PacMan.exe</div>
         </div>
-    </main>
 
-    <footer class="footer">
-        <p>🎮 Built with HTML5, CSS3 & JavaScript | Retro Gaming Experience 🎮</p>
-    </footer>
+        <div class="desktop-icon ttt-icon" onclick="selectIcon(this)" ondblclick="playGame('ttt.html')">
+            <div class="icon-image">⭕</div>
+            <div class="icon-label">TicTac.exe</div>
+        </div>
+    </div>
+
+    <!-- Taskbar -->
+    <div class="taskbar">
+        <div class="start-button" onclick="showStartMenu()">
+            <div class="start-icon"></div>
+            Start
+        </div>
+        <div class="clock" id="clock">12:00 PM</div>
+    </div>
 
     <script>
-        // Create animated stars background
-        function createStars() {
-            const starsContainer = document.getElementById('stars');
-            const numberOfStars = 100;
+        let selectedIcon = null;
 
-            for (let i = 0; i < numberOfStars; i++) {
-                const star = document.createElement('div');
-                star.className = 'star';
-                star.style.left = Math.random() * 100 + '%';
-                star.style.top = Math.random() * 100 + '%';
-                star.style.width = Math.random() * 3 + 1 + 'px';
-                star.style.height = star.style.width;
-                star.style.animationDelay = Math.random() * 2 + 's';
-                starsContainer.appendChild(star);
-            }
+        // Update clock
+        function updateClock() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            document.getElementById('clock').textContent = timeString;
+        }
+
+        // Select icon function
+        function selectIcon(icon) {
+            // Remove selection from all icons
+            document.querySelectorAll('.desktop-icon').forEach(i => i.classList.remove('selected'));
+            
+            // Select clicked icon
+            icon.classList.add('selected');
+            selectedIcon = icon;
         }
 
         // Play game function
         function playGame(gameFile) {
-            // Add click effect
-            event.target.style.transform = 'scale(0.95)';
-            setTimeout(() => {
-                event.target.style.transform = 'scale(1.1)';
-            }, 100);
-
-            // Navigate to game
-            setTimeout(() => {
-                window.location.href = gameFile;
-            }, 200);
+            window.location.href = gameFile;
         }
 
-        // Add keyboard navigation
-        document.addEventListener('keydown', (e) => {
-            const cards = document.querySelectorAll('.game-card');
-            const buttons = document.querySelectorAll('.play-button');
+        // Menu functions
+        function showStartMenu() {
+            alert('🖥️ Arcadeium OS v2.1\n\nWelcome to your retro gaming desktop!\n\nDouble-click any .exe file to launch.\n\nInstalled Programs:\n• Snake.exe\n• Pong.exe\n• Tetris.exe\n• Invaders.exe\n• PacMan.exe\n• TicTac.exe');
+        }
 
-            if (e.key >= '1' && e.key <= '6') {
-                const index = parseInt(e.key) - 1;
-                if (buttons[index]) {
-                    buttons[index].click();
+        function switchTheme() {
+            alert('🎨 Theme Manager\n\nCurrent: Cloudy Sky\n\nAvailable themes:\n• Cloudy Sky (Active)\n• Sunset Dreams\n• Ocean Breeze\n\nFeature coming soon!');
+        }
+
+        function aboutComputer() {
+            alert('💻 About Arcadeium Computer\n\nArcadeium OS v2.1\nRetro Gaming Edition\n\nProcessor: Nostalgia-486\nMemory: 640KB ought to be enough\nGraphics: 16-color VGA\nSound: PC Speaker Beeps\n\nBuilt with love for retro gaming! 🕹️');
+        }
+
+        function fancyChat() {
+            alert('💬 Retro Chat v1.0\n\nWelcome to the information superhighway!\n\n📞 Dial-up connection required\n🌐 Connect to bulletin boards\n💾 Download the latest shareware\n\nFeature coming soon to Arcadeium!');
+        }
+
+        // Desktop click handler
+        document.querySelector('.desktop').addEventListener('click', (e) => {
+            if (e.target.classList.contains('desktop') || e.target.classList.contains('desktop')) {
+                // Clicked on empty desktop space
+                document.querySelectorAll('.desktop-icon').forEach(i => i.classList.remove('selected'));
+                selectedIcon = null;
+            }
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && selectedIcon) {
+                // Enter key on selected icon
+                const gameFile = selectedIcon.getAttribute('onclick');
+                if (gameFile && gameFile.includes('.html')) {
+                    const match = gameFile.match(/'([^']+\.html)'/);
+                    if (match) {
+                        playGame(match[1]);
+                    }
                 }
             }
         });
 
         // Initialize
-        createStars();
+        updateClock();
+        setInterval(updateClock, 1000);
 
-        // Add some interactive effects
-        document.querySelectorAll('.game-card').forEach(card => {
-            card.addEventListener('mouseenter', () => {
-                card.style.transform = 'translateY(-10px) scale(1.05)';
-            });
-
-            card.addEventListener('mouseleave', () => {
-                card.style.transform = 'translateY(0) scale(1)';
-            });
+        // Prevent context menu on desktop
+        document.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
         });
     </script>
 </body>
