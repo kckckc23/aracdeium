@@ -24,7 +24,7 @@
                 <div class="window-button" onclick="window.location.href='index.html'">×</div>
             </div>
         </div>
-        
+
         <div class="game-content">
             <!-- HUD Panel -->
             <div class="hud-panel">
@@ -43,8 +43,10 @@
             </div>
 
             <!-- Game Canvas -->
-            <canvas id="game"></canvas>
-            
+            <div class="screen-cell"><canvas id="game"></canvas></div>
+
+            <!-- Side panel: instructions + buttons -->
+            <div class="side-cell">
             <!-- Control Panel -->
             <div class="control-panel">
                 <div class="control-section">
@@ -62,6 +64,7 @@
                 <button class="retro-button" onclick="togglePause()">Pause</button>
                 <button class="retro-button" onclick="showHelp()">Help</button>
             </div>
+            </div>
         </div>
     </div>
 
@@ -78,301 +81,201 @@
         const canvas = document.getElementById("game");
         const ctx = canvas.getContext("2d");
 
-        // Audio setup
+        const BOX = 20, COLS = 24, ROWS = 18;
+        canvas.width = COLS * BOX;
+        canvas.height = ROWS * BOX;
+
+        // ── Audio ────────────────────────────────────────────
         let audioEnabled = false;
-        const foodSound = new Audio('music/snake_food.mp3');
-        const gameOverSound = new Audio('music/snake_gameover.mp3');
-        const movementSound = new Audio('music/snake_movement.mp3');
-        
-        foodSound.volume = 0.6;
-        gameOverSound.volume = 0.7;
-        movementSound.volume = 0.3;
-        movementSound.loop = true;
-
-        // Enable audio on first user interaction
+        const foodSound = new Audio('music/snakes_food.mp3');
+        const gameOverSound = new Audio('music/snakes_gameover.mp3');
+        const movementSound = new Audio('music/snakes_movement.mp3');
+        foodSound.volume = 0.6; gameOverSound.volume = 0.7;
+        movementSound.volume = 0.25; movementSound.loop = true;
         function enableAudio() {
-            if (!audioEnabled) {
-                audioEnabled = true;
-                // Try to load audio files
-                foodSound.load();
-                gameOverSound.load();
-                movementSound.load();
-            }
+            if (!audioEnabled) { audioEnabled = true; foodSound.load(); gameOverSound.load(); movementSound.load(); }
+        }
+        function playSound(s) { if (audioEnabled) { s.currentTime = 0; s.play().catch(() => {}); } }
+
+        // ── State ────────────────────────────────────────────
+        let snake, dir, dirQueue, food, score, eaten, stepMs, acc, state, lastTs, animTime, loopRunning;
+
+        function reset() {
+            snake = [{ x: 8, y: 9 }, { x: 7, y: 9 }, { x: 6, y: 9 }];
+            dir = { x: 1, y: 0 };
+            dirQueue = [];
+            score = 0; eaten = 0; stepMs = 140; acc = 0;
+            food = newFood();
+            state = 'ready';            // ready | play | paused | over
+            updateDisplay();
         }
 
-        function playSound(sound) {
-            if (audioEnabled) {
-                sound.currentTime = 0;
-                sound.play().catch(e => console.log('Audio play failed:', e));
-            }
+        function newFood() {
+            let f;
+            do { f = { x: (Math.random() * COLS) | 0, y: (Math.random() * ROWS) | 0 }; }
+            while (snake.some(s => s.x === f.x && s.y === f.y));
+            return f;
         }
 
-        // Grid configuration - ensure exact fit
-        const box = 20;
-        const cols = 24;
-        const rows = 18;
-        
-        // Set canvas size based on grid
-        canvas.width = cols * box;
-        canvas.height = rows * box;
+        const speedLevel = () => 1 + Math.floor(eaten / 5);
 
-        let snake = [{ x: 10 * box, y: 10 * box }];
-        let food = generateFood();
-        let dx = 0;
-        let dy = 0;
-        let game = null;
-        let gameStarted = false;
-        let gameRunning = false;
-        let paused = false;
-        let score = 0;
-        let speed = 1;
-        let gameSpeed = 150;
-
-        function generateFood() {
-            let newFood;
-            do {
-                newFood = {
-                    x: Math.floor(Math.random() * cols) * box,
-                    y: Math.floor(Math.random() * rows) * box
-                };
-            } while (snake.some(segment => segment.x === newFood.x && segment.y === newFood.y));
-            return newFood;
+        // ── Input (queued — prevents reversing into yourself) ──
+        function queueDir(nd) {
+            const last = dirQueue.length ? dirQueue[dirQueue.length - 1] : dir;
+            if (nd.x === -last.x && nd.y === -last.y) return;   // no reverse
+            if (nd.x === last.x && nd.y === last.y) return;     // no duplicate
+            if (dirQueue.length < 2) dirQueue.push(nd);
         }
 
-        document.addEventListener("keydown", (e) => {
-            // Prevent default behavior for arrow keys and space to avoid page scrolling
-            if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(e.key)) {
-                e.preventDefault();
-            }
-            
-            if (!gameStarted && ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
-                enableAudio(); // Enable audio on first interaction
-                gameStarted = true;
-                gameRunning = true;
-                setDirection(e);
-                game = setInterval(draw, gameSpeed);
-                
-                // Start movement sound
-                if (audioEnabled) {
-                    movementSound.play().catch(e => console.log('Audio play failed:', e));
-                }
-            } else if (gameStarted && gameRunning) {
-                if (e.key === ' ') {
-                    togglePause();
-                } else {
-                    setDirection(e);
-                }
-            }
-        });
+        // ── Step ─────────────────────────────────────────────
+        function step() {
+            if (dirQueue.length) dir = dirQueue.shift();
 
-        function setDirection(e) {
-            if (e.key === "ArrowLeft" && dx === 0) {
-                dx = -box; dy = 0;
-            } else if (e.key === "ArrowUp" && dy === 0) {
-                dx = 0; dy = -box;
-            } else if (e.key === "ArrowRight" && dx === 0) {
-                dx = box; dy = 0;
-            } else if (e.key === "ArrowDown" && dy === 0) {
-                dx = 0; dy = box;
-            }
-        }
+            const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
 
-        function togglePause() {
-            paused = !paused;
-            if (paused) {
-                clearInterval(game);
-                drawPauseScreen();
-            } else {
-                game = setInterval(draw, gameSpeed);
-            }
-        }
-
-        function drawGrid() {
-            ctx.strokeStyle = "#0a4d4d";
-            ctx.lineWidth = 1;
-            for (let x = 0; x <= canvas.width; x += box) {
-                ctx.beginPath();
-                ctx.moveTo(x, 0);
-                ctx.lineTo(x, canvas.height);
-                ctx.stroke();
-            }
-            for (let y = 0; y <= canvas.height; y += box) {
-                ctx.beginPath();
-                ctx.moveTo(0, y);
-                ctx.lineTo(canvas.width, y);
-                ctx.stroke();
-            }
-        }
-
-        function drawSnake() {
-            snake.forEach((segment, index) => {
-                if (index === 0) {
-                    // Head
-                    ctx.fillStyle = "#00FF00";
-                    ctx.fillRect(segment.x + 2, segment.y + 2, box - 4, box - 4);
-                    
-                    // Eyes
-                    ctx.fillStyle = "#000";
-                    ctx.fillRect(segment.x + 6, segment.y + 6, 4, 4);
-                    ctx.fillRect(segment.x + 15, segment.y + 6, 4, 4);
-                } else {
-                    // Body
-                    const gradient = ctx.createLinearGradient(segment.x, segment.y, segment.x + box, segment.y + box);
-                    gradient.addColorStop(0, "#00CC00");
-                    gradient.addColorStop(1, "#008800");
-                    ctx.fillStyle = gradient;
-                    ctx.fillRect(segment.x + 1, segment.y + 1, box - 2, box - 2);
-                    
-                    // Body pattern
-                    ctx.fillStyle = "#00FF00";
-                    ctx.fillRect(segment.x + 5, segment.y + 5, box - 10, box - 10);
-                }
-            });
-        }
-
-        function drawFood() {
-            // Animated food
-            const time = Date.now() * 0.01;
-            const pulse = Math.sin(time) * 0.1 + 0.9;
-            
-            ctx.fillStyle = "#FF0000";
-            const size = box * pulse;
-            const offset = (box - size) / 2;
-            ctx.fillRect(food.x + offset, food.y + offset, size, size);
-            
-            // Food shine effect
-            ctx.fillStyle = "#FF6666";
-            ctx.fillRect(food.x + 5, food.y + 5, 8, 8);
-        }
-
-        function drawPauseScreen() {
-            ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            ctx.fillStyle = "#00FFFF";
-            ctx.font = "30px Orbitron";
-            ctx.textAlign = "center";
-            ctx.fillText("PAUSED", canvas.width / 2, canvas.height / 2);
-            ctx.font = "16px Orbitron";
-            ctx.fillText("Press SPACE to continue", canvas.width / 2, canvas.height / 2 + 40);
-        }
-
-        function updateDisplay() {
-            document.getElementById('score').textContent = score;
-            document.getElementById('length').textContent = snake.length;
-            document.getElementById('speed').textContent = speed;
-        }
-
-        function draw() {
-            if (paused) return;
-            
-            ctx.fillStyle = "#000";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            drawGrid();
-
-            drawSnake();
-            drawFood();
-
-            let head = { x: snake[0].x + dx, y: snake[0].y + dy };
-
-            // Check collisions
-            if (
-                head.x < 0 || head.y < 0 ||
-                head.x >= canvas.width || head.y >= canvas.height ||
-                snake.some(s => s.x === head.x && s.y === head.y)
-            ) {
-                gameOver();
-                return;
+            if (head.x < 0 || head.y < 0 || head.x >= COLS || head.y >= ROWS ||
+                snake.some(s => s.x === head.x && s.y === head.y)) {
+                return gameOver();
             }
 
             snake.unshift(head);
 
-            // Check food collision
             if (head.x === food.x && head.y === food.y) {
-                score += 10 * speed;
-                food = generateFood();
-                
-                // Play food sound
+                score += 10 * speedLevel();
+                eaten++;
+                food = newFood();
                 playSound(foodSound);
-                
-                // Increase speed every 5 food items
-                if (snake.length % 5 === 0) {
-                    speed++;
-                    gameSpeed = Math.max(50, gameSpeed - 10);
-                    clearInterval(game);
-                    game = setInterval(draw, gameSpeed);
-                }
-                
+                stepMs = Math.max(60, 140 - eaten * 5);   // smooth speed ramp
                 updateDisplay();
             } else {
                 snake.pop();
             }
         }
 
-        function gameOver() {
-            clearInterval(game);
-            gameRunning = false;
-            
-            // Stop movement sound and play game over sound
-            if (audioEnabled) {
-                movementSound.pause();
-                movementSound.currentTime = 0;
+        // ── Render ───────────────────────────────────────────
+        function drawGrid() {
+            ctx.strokeStyle = 'rgba(255,176,0,0.06)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x <= COLS; x++) { ctx.beginPath(); ctx.moveTo(x * BOX, 0); ctx.lineTo(x * BOX, canvas.height); ctx.stroke(); }
+            for (let y = 0; y <= ROWS; y++) { ctx.beginPath(); ctx.moveTo(0, y * BOX); ctx.lineTo(canvas.width, y * BOX); ctx.stroke(); }
+        }
+
+        function cell(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fill(); }
+
+        function drawSnake() {
+            for (let i = snake.length - 1; i >= 0; i--) {
+                const s = snake[i];
+                const px = s.x * BOX, py = s.y * BOX;
+                if (i === 0) {
+                    ctx.save(); ctx.shadowColor = '#4dff88'; ctx.shadowBlur = 10;
+                    ctx.fillStyle = '#7dffac';
+                    cell(px + 1, py + 1, BOX - 2, BOX - 2, 6);
+                    ctx.restore();
+                    // eyes facing direction
+                    ctx.fillStyle = '#04240f';
+                    const ex = dir.x, ey = dir.y;
+                    const cx = px + BOX / 2, cy = py + BOX / 2;
+                    const ox = ey !== 0 ? 4 : 4 * ex, oy = ex !== 0 ? 4 : 4 * ey;
+                    ctx.beginPath();
+                    ctx.arc(cx + (ey ? -4 : ox), cy + (ex ? -4 : oy), 2, 0, 7);
+                    ctx.arc(cx + (ey ? 4 : ox), cy + (ex ? 4 : oy), 2, 0, 7);
+                    ctx.fill();
+                } else {
+                    const t = i / snake.length;
+                    ctx.fillStyle = `rgb(${30 + t * 20}, ${200 - t * 70}, ${100 - t * 30})`;
+                    cell(px + 2, py + 2, BOX - 4, BOX - 4, 5);
+                }
             }
+        }
+
+        function drawFood() {
+            const pulse = Math.sin(animTime * 6) * 0.15 + 0.85;
+            const cx = food.x * BOX + BOX / 2, cy = food.y * BOX + BOX / 2;
+            ctx.save();
+            ctx.shadowColor = '#ff4533'; ctx.shadowBlur = 14;
+            ctx.fillStyle = '#ff5a47';
+            ctx.beginPath(); ctx.arc(cx, cy, (BOX / 2 - 2) * pulse, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+            ctx.fillStyle = '#ffd9b0';
+            ctx.beginPath(); ctx.arc(cx - 2, cy - 2, 2, 0, Math.PI * 2); ctx.fill();
+        }
+
+        function centerText(big, small) {
+            ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#ffb000'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.font = '20px "Press Start 2P", monospace';
+            ctx.fillText(big, canvas.width / 2, canvas.height / 2 - 12);
+            if (small) { ctx.font = '16px "VT323", monospace'; ctx.fillText(small, canvas.width / 2, canvas.height / 2 + 22); }
+        }
+
+        function render() {
+            ctx.fillStyle = '#04040a'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            drawGrid(); drawFood(); drawSnake();
+            if (state === 'ready') centerText('SNAKE.EXE', 'Press an arrow key to start');
+            if (state === 'paused') centerText('PAUSED', 'Press space to resume');
+        }
+
+        function updateDisplay() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('length').textContent = snake.length;
+            document.getElementById('speed').textContent = speedLevel();
+        }
+
+        function gameOver() {
+            state = 'over';
+            if (audioEnabled) { movementSound.pause(); movementSound.currentTime = 0; }
             playSound(gameOverSound);
-            
             document.getElementById('finalScore').textContent = score;
             document.getElementById('finalLength').textContent = snake.length;
             document.getElementById('gameOver').style.display = 'block';
         }
 
-        function restartGame() {
-            snake = [{ x: 10 * box, y: 10 * box }];
-            food = generateFood();
-            dx = 0;
-            dy = 0;
-            score = 0;
-            speed = 1;
-            gameSpeed = 150;
-            gameStarted = false;
-            gameRunning = false;
-            paused = false;
-            
-            // Stop all sounds
-            if (audioEnabled) {
-                movementSound.pause();
-                movementSound.currentTime = 0;
+        // ── Loop ─────────────────────────────────────────────
+        function loop(ts) {
+            if (!lastTs) lastTs = ts;
+            const dt = ts - lastTs; lastTs = ts; animTime += dt / 1000;
+            if (state === 'play') {
+                acc += dt;
+                while (acc >= stepMs && state === 'play') { acc -= stepMs; step(); }
             }
-            
+            render();
+            if (state === 'over') { loopRunning = false; return; }
+            requestAnimationFrame(loop);
+        }
+
+        function startLoop() { if (!loopRunning) { loopRunning = true; lastTs = 0; requestAnimationFrame(loop); } }
+
+        function restartGame() {
+            reset();
             document.getElementById('gameOver').style.display = 'none';
-            updateDisplay();
-            
-            // Draw initial screen
-            ctx.fillStyle = "#000";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            drawGrid();
-            drawSnake();
-            drawFood();
-            
-            ctx.fillStyle = "#00FF00";
-            ctx.font = "12px monospace";
-            ctx.textAlign = "center";
-            ctx.fillText("Press Arrow Keys to Start", canvas.width / 2, canvas.height / 2 - 20);
-            ctx.fillText("Snake.exe v1.0", canvas.width / 2, canvas.height / 2 + 20);
+            startLoop();
+        }
+
+        function togglePause() {
+            if (state === 'play') { state = 'paused'; if (audioEnabled) movementSound.pause(); }
+            else if (state === 'paused') { state = 'play'; if (audioEnabled) movementSound.play().catch(() => {}); }
         }
 
         function showHelp() {
-            alert('🐍 Snake.exe Help\n\nObjective: Eat food to grow your snake!\n\nControls:\n• Arrow Keys - Move snake\n• Space - Pause game\n\nRules:\n• Don\'t hit walls or yourself\n• Eat red food to grow\n• Speed increases as you grow\n\nGood luck!');
+            alert('🐍 Snake.exe Help\n\nObjective: Eat food to grow as long as you can!\n\nControls:\n• Arrow Keys - Move snake\n• Space - Pause / resume\n\nRules:\n• Don\'t hit the walls or your own tail\n• Each food grows you and adds score\n• You speed up every 5 food eaten\n\nGood luck!');
         }
+        function minimizeWindow() { alert('💻 Minimize\n\nWindow minimized to taskbar!\n(This is just a demo)'); }
 
-        function minimizeWindow() {
-            alert('💻 Minimize\n\nWindow minimized to taskbar!\n(This is just a demo)');
-        }
-
-        // Enable audio on any click
+        document.addEventListener('keydown', (e) => {
+            const map = { ArrowUp: { x: 0, y: -1 }, ArrowDown: { x: 0, y: 1 }, ArrowLeft: { x: -1, y: 0 }, ArrowRight: { x: 1, y: 0 } };
+            if (e.key === ' ') { e.preventDefault(); if (state === 'play' || state === 'paused') togglePause(); return; }
+            if (!(e.key in map)) return;
+            e.preventDefault();
+            enableAudio();
+            if (state === 'ready') {
+                state = 'play';
+                if (audioEnabled) movementSound.play().catch(() => {});
+            }
+            if (state === 'play') queueDir(map[e.key]);
+        });
         document.addEventListener('click', enableAudio);
-        
-        // Initialize game
-        updateDisplay();
+
+        // Boot
         restartGame();
     </script>
 

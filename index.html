@@ -6,7 +6,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Arcadeium - Retro Desktop</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Press+Start+2P&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&family=VT323&display=swap');
+
+        :root {
+            --tube:      #07090d;
+            --tube-2:    #0c1016;
+            --amber:     #ffb000;
+            --amber-dim: #b87800;
+            --ink:       #ffe7b0;
+            --ink-dim:   #c9a86a;
+            --green:     #4dff88;
+            --line:      rgba(255, 176, 0, 0.22);
+            --bars: linear-gradient(90deg,
+                #d6d6d6 0 14.28%, #d6d600 14.28% 28.56%, #00d6d6 28.56% 42.84%,
+                #00c33a 42.84% 57.12%, #d600d6 57.12% 71.4%, #d60000 71.4% 85.68%,
+                #0033d6 85.68% 100%);
+            --glow-amber: 0 0 6px rgba(255,176,0,.55), 0 0 18px rgba(255,176,0,.25);
+        }
 
         * {
             margin: 0;
@@ -15,286 +31,459 @@
         }
 
         body {
-            font-family: 'Silkscreen', 'Press Start 2P', monospace;
-            font-size: 11px;
-            background: 
-                linear-gradient(180deg, 
-                    #e6f3ff 0%, 
-                    #cce7ff 20%, 
-                    #b3dbff 40%, 
-                    #99cfff 60%, 
-                    #80c3ff 80%, 
-                    #66b7ff 100%
-                );
+            font-family: 'Silkscreen', monospace;
+            font-size: 12px;
+            color: var(--ink);
             height: 100vh;
             overflow: hidden;
             cursor: default;
             user-select: none;
             image-rendering: pixelated;
-            image-rendering: -moz-crisp-edges;
-            image-rendering: crisp-edges;
+            background:
+                radial-gradient(ellipse 120% 90% at 50% 40%, #0e141c 0%, #05070a 70%, #000 100%);
         }
 
-        /* CRT Effect Overlay */
+        /* Global CRT glass: scanlines + curvature vignette */
         body::before {
             content: '';
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: 
-                repeating-linear-gradient(
-                    0deg,
-                    transparent,
-                    transparent 2px,
-                    rgba(0, 0, 0, 0.03) 2px,
-                    rgba(0, 0, 0, 0.03) 4px
-                ),
-                radial-gradient(ellipse at center, transparent 0%, rgba(0, 0, 0, 0.1) 100%);
+            inset: 0;
             pointer-events: none;
-            z-index: 9999;
+            z-index: 9998;
+            background:
+                repeating-linear-gradient(0deg,
+                    transparent 0 2px, rgba(0,0,0,0.30) 2px 3px),
+                radial-gradient(ellipse 100% 100% at 50% 50%,
+                    transparent 55%, rgba(0,0,0,0.6) 100%);
+            background-size: 100% 3px, 100% 100%;
+            animation: crt-flicker 5s steps(60) infinite;
         }
 
-        /* Subtle noise texture */
+        /* One-shot power-on sweep */
         body::after {
             content: '';
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            opacity: 0.02;
-            background-image: 
-                radial-gradient(circle at 25% 25%, #000 1px, transparent 1px),
-                radial-gradient(circle at 75% 75%, #000 1px, transparent 1px);
-            background-size: 4px 4px;
-            background-position: 0 0, 2px 2px;
+            inset: 0;
             pointer-events: none;
-            z-index: 9998;
+            z-index: 9999;
+            background: #fff;
+            transform-origin: center;
+            animation: crt-on 1100ms ease-out 1 both;
         }
 
-        .desktop {
-            position: relative;
-            width: 100%;
-            height: 100vh;
-            background-image: 
-                radial-gradient(ellipse at 30% 70%, rgba(255, 255, 255, 0.3) 0%, transparent 40%),
-                radial-gradient(ellipse at 70% 30%, rgba(255, 255, 255, 0.2) 0%, transparent 50%),
-                radial-gradient(ellipse at 50% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 60%);
-            filter: blur(0.5px);
+        @keyframes crt-on {
+            0%   { opacity: 1; transform: scaleY(0.004) scaleX(1.2); filter: brightness(3); }
+            9%   { opacity: 1; transform: scaleY(0.01)  scaleX(1.1); }
+            16%  { opacity: .9; transform: scaleY(1)    scaleX(1);   filter: brightness(2); }
+            22%  { opacity: .35; }
+            30%  { opacity: .7; }
+            45%  { opacity: .12; }
+            100% { opacity: 0; transform: scaleY(1) scaleX(1); filter: brightness(1); }
         }
 
-        /* Top Menu Bar */
+        @keyframes crt-flicker {
+            0%,100% { opacity: 1; }
+            97%     { opacity: 1; }
+            98%     { opacity: .82; }
+            99%     { opacity: .94; }
+        }
+
+        /* ---- Top OSD bar ---- */
         .menu-bar {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 24px;
-            background: #f5deb3;
-            border-bottom: 2px solid #d2b48c;
-            display: flex;
-            align-items: center;
-            padding: 0 8px;
-            z-index: 1001;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .menu-button {
-            height: 18px;
-            padding: 0 12px;
-            background: #f5deb3;
-            border: 1px solid #d2b48c;
-            font-family: 'Silkscreen', monospace;
-            font-size: 9px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            margin-right: 4px;
-            color: #8b4513;
-        }
-
-        .menu-button:hover {
-            background: #faebd7;
-            border: 1px solid #cd853f;
-        }
-
-        .menu-button:active {
-            background: #deb887;
-        }
-
-        .taskbar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 28px;
-            background: #f0e68c;
-            border-top: 2px solid #daa520;
-            display: flex;
-            align-items: center;
-            padding: 0 4px;
-            z-index: 1000;
-            box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .start-button {
-            height: 22px;
-            padding: 0 16px;
-            background: #ffb6c1;
-            border: 2px outset #ffb6c1;
-            font-family: 'Silkscreen', monospace;
-            font-size: 9px;
-            font-weight: bold;
-            cursor: pointer;
+            top: 0; left: 0; right: 0;
+            height: 30px;
+            background: linear-gradient(180deg, #1b1305 0%, #0b0801 100%);
+            border-bottom: 1px solid var(--amber-dim);
+            box-shadow: 0 1px 0 rgba(255,176,0,.15), 0 3px 10px rgba(0,0,0,.6);
             display: flex;
             align-items: center;
             gap: 4px;
-            color: #8b008b;
+            padding: 0 10px;
+            z-index: 1001;
+            overflow: hidden;       /* OSD labels never push past the bezel */
+        }
+        .menu-bar::before {
+            content: '▌AV-1';
+            font-family: 'VT323', monospace;
+            font-size: 18px;
+            color: var(--amber);
+            text-shadow: var(--glow-amber);
+            margin-right: 12px;
+            letter-spacing: 1px;
         }
 
+        .menu-button {
+            height: 20px;
+            padding: 0 12px;
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--ink-dim);
+            font-family: 'Silkscreen', monospace;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: color .12s, border-color .12s, text-shadow .12s;
+        }
+        .menu-button:hover {
+            color: var(--amber);
+            border-color: var(--line);
+            text-shadow: var(--glow-amber);
+        }
+        .menu-button:active { color: var(--green); }
+
+        /* ---- The CRT screen ---- */
+        .desktop {
+            position: relative;
+            height: 100vh;          /* fallback */
+            height: 100dvh;         /* tracks mobile browser chrome */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: clamp(8px, 2vh, 16px);
+            padding: clamp(40px, 7vh, 56px) clamp(14px, 4vw, 24px) clamp(48px, 8vh, 64px);
+            overflow: auto;
+        }
+
+        /* Channel grid — sized independently of the full-width marquee */
+        .tile-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(96px, 122px));
+            justify-content: center;
+            gap: clamp(12px, 2vw, 18px) clamp(14px, 2.5vw, 22px);
+            width: 100%;
+            max-width: 440px;
+        }
+
+        /* ---- Backlit marquee header (signature) ---- */
+        .marquee {
+            width: 100%;
+            max-width: 640px;
+            text-align: center;
+            margin-bottom: clamp(8px, 2vh, 18px);
+        }
+        .marquee-title {
+            font-family: 'Press Start 2P', monospace;
+            font-size: clamp(19px, 6.4vw, 52px);
+            color: var(--amber);
+            letter-spacing: clamp(1px, 0.7vw, 4px);
+            white-space: nowrap;
+            text-shadow:
+                -2px 0 rgba(255,40,80,.55), 2px 0 rgba(60,220,255,.5),
+                0 0 14px rgba(255,176,0,.65), 0 0 40px rgba(255,176,0,.35);
+            animation: marquee-glow 3.6s ease-in-out infinite;
+        }
+        @keyframes marquee-glow {
+            0%,100% { filter: brightness(1); }
+            50%     { filter: brightness(1.18); }
+        }
+        .color-bars {
+            height: 8px;
+            width: min(420px, 80%);
+            margin: 14px auto 12px;
+            background: var(--bars);
+            border-radius: 2px;
+            box-shadow: 0 0 14px rgba(255,255,255,.18);
+            opacity: .9;
+        }
+        .marquee-sub {
+            font-family: 'VT323', monospace;
+            font-size: 22px;
+            color: var(--ink-dim);
+            letter-spacing: 2px;
+            text-shadow: 0 0 8px rgba(255,231,176,.25);
+            animation: blink 1.4s steps(1) infinite;
+        }
+        @keyframes blink { 50% { opacity: .35; } }
+
+        /* ---- Game tiles (channels) ---- */
+        .desktop-icon {
+            position: relative;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 8px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            transition: background .12s, border-color .12s, transform .1s;
+        }
+        .desktop-icon:hover {
+            background: rgba(255,176,0,.06);
+            border-color: var(--line);
+            transform: translateY(-2px);
+        }
+        .desktop-icon.selected {
+            background: rgba(255,176,0,.1);
+            border-color: var(--amber);
+            box-shadow: 0 0 18px rgba(255,176,0,.3);
+        }
+
+        .icon-image {
+            width: 64px;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            background: radial-gradient(ellipse at 50% 40%, var(--tube-2), var(--tube));
+            border: 2px solid var(--amber-dim);
+            border-radius: 8px;
+            box-shadow: inset 0 0 22px rgba(0,0,0,.85), 0 0 12px rgba(255,176,0,.1);
+            position: relative;
+            overflow: hidden;
+        }
+        /* scanlines on each tile's mini-screen */
+        .icon-image::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(0deg,
+                transparent 0 2px, rgba(0,0,0,.35) 2px 3px);
+            pointer-events: none;
+        }
+        .desktop-icon:hover .icon-image { box-shadow: inset 0 0 18px rgba(0,0,0,.7), 0 0 18px rgba(255,176,0,.35); }
+
+        .icon-label {
+            font-family: 'Silkscreen', monospace;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            text-align: center;
+            color: var(--ink-dim);
+        }
+        .desktop-icon:hover .icon-label,
+        .desktop-icon.selected .icon-label { color: var(--amber); text-shadow: var(--glow-amber); }
+
+        /* per-game phosphor accents on the channel number */
+        .desktop-icon::before {
+            font-family: 'VT323', monospace;
+            font-size: 13px;
+            color: var(--amber-dim);
+            position: absolute;
+            top: 4px; left: 8px;
+            letter-spacing: 1px;
+        }
+        .recycle-bin::before      { content: 'SYS'; }
+        .snake-icon::before        { content: 'CH1'; }
+        .pong-icon::before         { content: 'CH2'; }
+        .tetris-icon::before       { content: 'CH3'; }
+        .spaceinvaders-icon::before{ content: 'CH4'; }
+        .pacman-icon::before       { content: 'CH5'; }
+        .ttt-icon::before          { content: 'CH6'; }
+
+        /* ---- Cabinet control deck (taskbar) ---- */
+        .taskbar {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            height: 34px;
+            background: linear-gradient(180deg, #100b03 0%, #050300 100%);
+            border-top: 1px solid var(--amber-dim);
+            box-shadow: 0 -1px 0 rgba(255,176,0,.15), 0 -3px 10px rgba(0,0,0,.6);
+            display: flex;
+            align-items: center;
+            padding: 0 8px;
+            z-index: 1000;
+        }
+
+        .start-button {
+            height: 24px;
+            padding: 0 16px;
+            background: linear-gradient(180deg, #ffc63a, var(--amber) 55%, #c98700);
+            border: none;
+            border-radius: 6px;
+            color: #2a1a00;
+            font-family: 'Silkscreen', monospace;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 3px 0 #7a5200, 0 4px 8px rgba(0,0,0,.5);
+            transition: transform .06s, box-shadow .06s;
+        }
         .start-button:active {
-            border: 2px inset #ffb6c1;
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 #7a5200;
         }
 
         .start-icon {
             width: 12px;
             height: 12px;
-            background: 
-                linear-gradient(45deg, 
-                    #ff69b4 0%, #ff69b4 25%, 
-                    #ffd700 25%, #ffd700 50%, 
-                    #32cd32 50%, #32cd32 75%, 
-                    #1e90ff 75%, #1e90ff 100%
-                );
-            image-rendering: pixelated;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 8px var(--green), 0 0 2px #fff inset;
         }
 
         .clock {
             margin-left: auto;
-            padding: 0 8px;
-            height: 22px;
-            background: #e6e6fa;
-            border: 2px inset #e6e6fa;
+            padding: 0 10px;
+            height: 24px;
+            background: #000;
+            border: 1px solid var(--amber-dim);
+            border-radius: 4px;
             display: flex;
             align-items: center;
-            font-size: 9px;
-            font-family: 'Silkscreen', monospace;
-            color: #4b0082;
+            font-family: 'VT323', monospace;
+            font-size: 18px;
+            letter-spacing: 1px;
+            color: var(--amber);
+            text-shadow: var(--glow-amber);
         }
 
-        .desktop-icon {
-            position: absolute;
-            width: 64px;
-            height: 84px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            cursor: pointer;
-            padding: 2px;
-            image-rendering: pixelated;
+        /* Phones: drop to two channels per row */
+        @media (max-width: 600px) {
+            .tile-grid { grid-template-columns: repeat(2, minmax(110px, 160px)); max-width: 360px; }
+            .marquee-sub { font-size: 18px; }
+        }
+        /* Narrow phones: let tiles flex down to fit */
+        @media (max-width: 360px) {
+            .tile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 100%; gap: 12px; }
+            .icon-image { width: 52px; height: 52px; font-size: 26px; }
+            .clock { font-size: 15px; }
+            .menu-button { padding: 0 7px; }
+        }
+        /* Landscape phones: short viewport, keep marquee tight */
+        @media (max-height: 480px) and (orientation: landscape) {
+            .desktop { padding-top: 40px; }
+            .marquee { margin-bottom: 8px; }
+            .color-bars { margin: 8px auto; }
         }
 
-        .desktop-icon:hover {
-            background-color: rgba(173, 216, 230, 0.3);
-            border: 1px dotted #4169e1;
+        @media (prefers-reduced-motion: reduce) {
+            body::before { animation: none; }
+            body::after { animation: none; opacity: 0; }
+            .marquee-title, .marquee-sub { animation: none; }
+            .os-modal, .os-window { animation: none; }
         }
 
-        .desktop-icon.selected {
-            background-color: rgba(173, 216, 230, 0.6);
-            border: 1px dotted #4169e1;
+        /* ============================================================
+           CRT OS popup windows (replace native alert dialogs)
+           ============================================================ */
+        .os-modal {
+            position: fixed; inset: 0; z-index: 2000;
+            display: flex; align-items: center; justify-content: center;
+            padding: 20px;
+            background: rgba(2, 4, 8, 0.6);
+            animation: os-fade .15s ease-out;
+        }
+        .os-modal[hidden] { display: none; }
+        @keyframes os-fade { from { opacity: 0; } to { opacity: 1; } }
+
+        .os-window {
+            width: min(380px, 100%);
+            max-height: calc(100dvh - 60px);
+            display: flex; flex-direction: column;
+            background: linear-gradient(160deg, #2a2318 0%, #15110b 18%, #0a0805 100%);
+            border-radius: 14px;
+            padding: 9px;
+            box-shadow: 0 0 0 1px #000, 0 24px 60px rgba(0, 0, 0, 0.75);
+            animation: os-open .22s ease-out;
+        }
+        @keyframes os-open {
+            0%   { opacity: 0; transform: scale(.9) scaleY(.55); filter: brightness(1.9); }
+            55%  { opacity: 1; }
+            100% { transform: scale(1) scaleY(1); filter: brightness(1); }
         }
 
-        .icon-image {
-            width: 32px;
-            height: 32px;
-            margin-bottom: 2px;
-            background: #f5f5dc;
-            border: 2px outset #f5f5dc;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            image-rendering: pixelated;
-            box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+        .os-screen {
+            display: flex; flex-direction: column; min-height: 0;
+            border: 1px solid var(--line);
+            border-radius: 9px;
+            overflow: hidden;
+            background: radial-gradient(ellipse 120% 100% at 50% 0%, var(--tube-2), var(--tube) 80%);
         }
 
-        .icon-label {
-            background: rgba(245, 245, 220, 0.9);
-            color: #2f4f4f;
-            font-size: 8px;
-            text-align: center;
-            line-height: 10px;
-            word-wrap: break-word;
-            max-width: 58px;
-            padding: 1px 2px;
-            border: 1px solid #d2b48c;
-            font-family: 'Silkscreen', monospace;
-            font-weight: bold;
+        .os-titlebar {
+            display: flex; align-items: center; justify-content: space-between; gap: 8px;
+            padding: 8px 10px;
+            background: linear-gradient(180deg, rgba(255,176,0,.16), rgba(255,176,0,.03));
+            border-bottom: 1px solid var(--line);
+        }
+        .os-title {
+            font-family: 'VT323', monospace; font-size: 19px; letter-spacing: 1px;
+            color: var(--amber);
+            text-shadow: -1px 0 rgba(255,40,80,.5), 1px 0 rgba(60,220,255,.45), var(--glow-amber);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .os-title .ic { font-size: 16px; }
+        .os-close {
+            flex: none; width: 24px; height: 19px;
+            background: #1a1206; border: 1px solid var(--amber-dim); border-radius: 4px;
+            color: var(--amber); font-family: 'Silkscreen', monospace; font-size: 11px;
+            line-height: 1; cursor: pointer; transition: background .12s, color .12s, box-shadow .12s;
+        }
+        .os-close:hover { background: #ff4533; color: #fff; border-color: #ff4533; box-shadow: 0 0 10px rgba(255,69,51,.6); }
+        .os-close:focus-visible, .os-ok:focus-visible, .os-prog:focus-visible {
+            outline: 2px solid var(--ink); outline-offset: 2px;
         }
 
-        .recycle-bin {
-            top: 40px;
-            left: 20px;
+        .os-body {
+            padding: 14px;
+            overflow-y: auto;
+            font-family: 'VT323', monospace;
+            font-size: 18px; line-height: 1.3; color: var(--ink-dim);
+        }
+        .os-body p { margin-bottom: 10px; }
+        .os-body p:last-child { margin-bottom: 0; }
+        .os-eyebrow {
+            font-family: 'Silkscreen', monospace; font-size: 9px; letter-spacing: 1px;
+            text-transform: uppercase; color: var(--amber); text-shadow: var(--glow-amber);
+            margin-bottom: 12px;
         }
 
-        .recycle-bin .icon-image {
-            background: #e6e6fa;
-            border: 2px outset #e6e6fa;
+        /* Start-menu launcher list */
+        .os-list { display: flex; flex-direction: column; gap: 3px; }
+        .os-prog {
+            display: flex; align-items: center; gap: 10px; width: 100%;
+            padding: 7px 9px; text-align: left; cursor: pointer;
+            background: transparent; border: 1px solid transparent; border-radius: 6px;
+            font-family: 'Silkscreen', monospace; font-size: 10px; color: var(--ink);
+            transition: background .1s, border-color .1s, color .1s;
         }
+        .os-prog .ic { font-size: 18px; }
+        .os-prog:hover { background: rgba(255,176,0,.1); border-color: var(--line); color: var(--amber); }
 
-        /* Game Icons Positioning */
-        .snake-icon { top: 40px; left: 100px; }
-        .pong-icon { top: 40px; left: 180px; }
-        .tetris-icon { top: 140px; left: 20px; }
-        .spaceinvaders-icon { top: 140px; left: 100px; }
-        .pacman-icon { top: 140px; left: 180px; }
-        .ttt-icon { top: 240px; left: 20px; }
+        /* About: spec rows */
+        .os-spec { display: flex; justify-content: space-between; gap: 14px; padding: 6px 0; border-bottom: 1px dashed rgba(255,176,0,.16); }
+        .os-spec .k { color: var(--ink-dim); }
+        .os-spec .v { color: var(--amber); text-align: right; }
 
-        /* Game-specific icon colors - muted pastels */
-        .snake-icon .icon-image { 
-            background: #98fb98;
-            border: 2px outset #98fb98;
+        /* Theme manager rows */
+        .os-theme {
+            display: flex; align-items: center; justify-content: space-between; gap: 10px;
+            padding: 8px 10px; margin-bottom: 6px;
+            border: 1px solid var(--line); border-radius: 6px;
+            font-family: 'Silkscreen', monospace; font-size: 10px; color: var(--ink);
         }
-        .pong-icon .icon-image { 
-            background: #ffb6c1;
-            border: 2px outset #ffb6c1;
-        }
-        .tetris-icon .icon-image { 
-            background: #87ceeb;
-            border: 2px outset #87ceeb;
-        }
-        .spaceinvaders-icon .icon-image { 
-            background: #dda0dd;
-            border: 2px outset #dda0dd;
-        }
-        .pacman-icon .icon-image { 
-            background: #f0e68c;
-            border: 2px outset #f0e68c;
-        }
-        .ttt-icon .icon-image { 
-            background: #ffd4c4;
-            border: 2px outset #ffd4c4;
-        }
+        .os-theme.active { border-color: var(--amber); background: rgba(255,176,0,.08); }
+        .os-theme.locked { opacity: .65; }
+        .os-theme .badge { font-family: 'Silkscreen', monospace; font-size: 8px; letter-spacing: 1px; padding: 3px 6px; border-radius: 3px; }
+        .os-theme.active .badge { background: var(--green); color: #04230f; }
+        .os-theme.locked .badge { background: #1a1206; color: var(--ink-dim); border: 1px solid var(--amber-dim); }
 
-        @media (max-width: 768px) {
-            .desktop-icon {
-                width: 56px;
-                height: 70px;
-            }
-            
-            .icon-image {
-                width: 28px;
-                height: 28px;
-                font-size: 16px;
-            }
-            
-            .icon-label {
-                font-size: 10px;
-                max-width: 52px;
-            }
+        .os-foot {
+            display: flex; justify-content: flex-end; gap: 10px;
+            padding: 10px; margin-top: 9px;
         }
+        .os-ok {
+            height: 28px; padding: 0 20px;
+            background: linear-gradient(180deg, #ffc63a, var(--amber) 55%, #c98700);
+            border: none; border-radius: 6px; color: #2a1a00;
+            font-family: 'Silkscreen', monospace; font-size: 9px; font-weight: 700;
+            letter-spacing: 1px; text-transform: uppercase; cursor: pointer;
+            box-shadow: 0 3px 0 #7a5200, 0 4px 8px rgba(0,0,0,.5);
+            transition: transform .06s, box-shadow .06s;
+        }
+        .os-ok:active { transform: translateY(2px); box-shadow: 0 1px 0 #7a5200; }
     </style>
 </head>
 
@@ -307,6 +496,14 @@
     </div>
 
     <div class="desktop">
+        <!-- Backlit marquee -->
+        <header class="marquee">
+            <div class="marquee-title">ARCADEIUM</div>
+            <div class="color-bars"></div>
+            <div class="marquee-sub">&#9654; INSERT COIN &middot; SELECT A GAME</div>
+        </header>
+
+        <div class="tile-grid">
         <!-- Recycle Bin -->
         <div class="desktop-icon recycle-bin" onclick="selectIcon(this)">
             <div class="icon-image">🗑</div>
@@ -343,6 +540,7 @@
             <div class="icon-image">⭕</div>
             <div class="icon-label">TicTac.exe</div>
         </div>
+        </div>
     </div>
 
     <!-- Taskbar -->
@@ -352,6 +550,22 @@
             Start
         </div>
         <div class="clock" id="clock">12:00 PM</div>
+    </div>
+
+    <!-- CRT OS popup window (shared) -->
+    <div class="os-modal" id="osModal" hidden>
+        <div class="os-window" role="dialog" aria-modal="true" aria-labelledby="osTitle">
+            <div class="os-screen">
+                <div class="os-titlebar">
+                    <span class="os-title"><span class="ic" id="osIcon">🖥️</span><span id="osTitle">Window</span></span>
+                    <button class="os-close" id="osClose" type="button" aria-label="Close window">×</button>
+                </div>
+                <div class="os-body" id="osBody"></div>
+            </div>
+            <div class="os-foot">
+                <button class="os-ok" id="osOk" type="button">OK</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -368,7 +582,7 @@
         function selectIcon(icon) {
             // Remove selection from all icons
             document.querySelectorAll('.desktop-icon').forEach(i => i.classList.remove('selected'));
-            
+
             // Select clicked icon
             icon.classList.add('selected');
             selectedIcon = icon;
@@ -379,21 +593,72 @@
             window.location.href = gameFile;
         }
 
-        // Menu functions
+        // ---- CRT OS popup windows (replaces native alert dialogs) ----
+        const osModal = document.getElementById('osModal');
+        let lastFocus = null;
+
+        function openWindow(icon, title, bodyHTML) {
+            document.getElementById('osIcon').textContent = icon;
+            document.getElementById('osTitle').textContent = title;
+            document.getElementById('osBody').innerHTML = bodyHTML;
+            lastFocus = document.activeElement;
+            osModal.hidden = false;
+            document.getElementById('osClose').focus();
+        }
+        function closeWindow() {
+            if (osModal.hidden) return;
+            osModal.hidden = true;
+            if (lastFocus && lastFocus.focus) lastFocus.focus();
+        }
+        function launchFrom(file) { closeWindow(); playGame(file); }
+
+        document.getElementById('osClose').addEventListener('click', closeWindow);
+        document.getElementById('osOk').addEventListener('click', closeWindow);
+        osModal.addEventListener('mousedown', (e) => { if (e.target === osModal) closeWindow(); });
+
+        const PROGRAMS = [
+            ['🐍', 'Snake.exe', 'snakes.html'],
+            ['🏓', 'Pong.exe', 'pong.html'],
+            ['🧩', 'Tetris.exe', 'tetris.html'],
+            ['👾', 'Invaders.exe', 'spaceinvaders.html'],
+            ['👻', 'PacMan.exe', 'pacman.html'],
+            ['⭕', 'TicTac.exe', 'ttt.html']
+        ];
+
+        // Menu / Start functions — each opens an Arcadeium OS window
         function showStartMenu() {
-            alert('🖥️ Arcadeium OS v2.1\n\nWelcome to your retro gaming desktop!\n\nDouble-click any .exe file to launch.\n\nInstalled Programs:\n• Snake.exe\n• Pong.exe\n• Tetris.exe\n• Invaders.exe\n• PacMan.exe\n• TicTac.exe');
+            const list = PROGRAMS.map(([ic, name, file]) =>
+                `<button class="os-prog" type="button" onclick="launchFrom('${file}')"><span class="ic">${ic}</span>${name}</button>`).join('');
+            openWindow('🕹️', 'Start', `
+                <div class="os-eyebrow">Arcadeium OS v2.1 · Installed programs</div>
+                <div class="os-list">${list}</div>`);
         }
 
         function switchTheme() {
-            alert('🎨 Theme Manager\n\nCurrent: Cloudy Sky\n\nAvailable themes:\n• Cloudy Sky (Active)\n• Sunset Dreams\n• Ocean Breeze\n\nFeature coming soon!');
+            openWindow('🎨', 'Theme Manager', `
+                <div class="os-eyebrow">Display theme</div>
+                <div class="os-theme active"><span>AV-1 Amber Phosphor</span><span class="badge">Active</span></div>
+                <div class="os-theme locked"><span>Sunset Dreams</span><span class="badge">Locked</span></div>
+                <div class="os-theme locked"><span>Ocean Breeze</span><span class="badge">Locked</span></div>
+                <p style="margin-top:10px">More display themes arrive in a future update.</p>`);
         }
 
         function aboutComputer() {
-            alert('💻 About Arcadeium Computer\n\nArcadeium OS v2.1\nRetro Gaming Edition\n\nProcessor: Nostalgia-486\nMemory: 640KB ought to be enough\nGraphics: 16-color VGA\nSound: PC Speaker Beeps\n\nBuilt with love for retro gaming! 🕹️');
+            openWindow('💻', 'About this Computer', `
+                <div class="os-eyebrow">Arcadeium OS v2.1 · Retro Gaming Edition</div>
+                <div class="os-spec"><span class="k">Processor</span><span class="v">Nostalgia-486</span></div>
+                <div class="os-spec"><span class="k">Memory</span><span class="v">640 KB</span></div>
+                <div class="os-spec"><span class="k">Graphics</span><span class="v">16-color VGA</span></div>
+                <div class="os-spec"><span class="k">Sound</span><span class="v">PC speaker</span></div>
+                <div class="os-spec"><span class="k">Display</span><span class="v">AV-1 amber CRT</span></div>
+                <p style="margin-top:12px">640 KB ought to be enough for anybody. 🕹️</p>`);
         }
 
         function fancyChat() {
-            alert('💬 Retro Chat v1.0\n\nWelcome to the information superhighway!\n\n📞 Dial-up connection required\n🌐 Connect to bulletin boards\n💾 Download the latest shareware\n\nFeature coming soon to Arcadeium!');
+            openWindow('💬', 'Retro Chat', `
+                <div class="os-eyebrow">Retro Chat v1.0</div>
+                <p>Dial up the information superhighway — connect to bulletin boards and grab the latest shareware.</p>
+                <p style="color:var(--amber)">📞 No carrier yet. Chat arrives in a future update.</p>`);
         }
 
         // Desktop click handler
@@ -407,6 +672,8 @@
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') { closeWindow(); return; }
+            if (!osModal.hidden) return;          // an OS window has focus
             if (e.key === 'Enter' && selectedIcon) {
                 // Enter key on selected icon
                 const gameFile = selectedIcon.getAttribute('onclick');
