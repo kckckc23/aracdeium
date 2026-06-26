@@ -1,376 +1,500 @@
-/* Arcadeium Retro Desktop Shared Styles */
-@import url('https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Press+Start+2P&display=swap');
+/* ============================================================
+   ARCADEIUM — "AV-1: The Tube"
+   Shared CRT / arcade-cabinet styling for all game pages.
+   Re-skin only: every class name & hook is preserved so the
+   existing game JavaScript keeps working untouched.
+   ============================================================ */
 
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&family=VT323&display=swap');
+
+:root {
+    --tube:      #07090d;   /* unlit tube black           */
+    --tube-2:    #0c1016;   /* screen glass               */
+    --bezel:     #15110b;   /* monitor plastic            */
+    --bezel-hi:  #2a2318;   /* plastic bevel highlight    */
+    --amber:     #ffb000;   /* primary phosphor           */
+    --amber-dim: #b87800;
+    --ink:       #ffe7b0;   /* phosphor white text        */
+    --ink-dim:   #c9a86a;
+    --green:     #4dff88;   /* GO / active                */
+    --red:       #ff4533;   /* alert / close              */
+    --line:      rgba(255, 176, 0, 0.22);
+
+    /* SMPTE-ish test-pattern bars — the one loud signature */
+    --bars: linear-gradient(90deg,
+        #d6d6d6 0 14.28%, #d6d600 14.28% 28.56%, #00d6d6 28.56% 42.84%,
+        #00c33a 42.84% 57.12%, #d600d6 57.12% 71.4%, #d60000 71.4% 85.68%,
+        #0033d6 85.68% 100%);
+
+    --glow-amber: 0 0 6px rgba(255,176,0,.55), 0 0 18px rgba(255,176,0,.25);
 }
 
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
 body {
-    font-family: 'Silkscreen', 'Press Start 2P', monospace;
-    font-size: 11px;
-    background: 
-        linear-gradient(180deg, 
-            #e6f3ff 0%, 
-            #cce7ff 20%, 
-            #b3dbff 40%, 
-            #99cfff 60%, 
-            #80c3ff 80%, 
-            #66b7ff 100%
-        );
+    font-family: 'Silkscreen', monospace;
+    font-size: 12px;
+    color: var(--ink);
     min-height: 100vh;
     cursor: default;
     user-select: none;
     image-rendering: pixelated;
-    image-rendering: -moz-crisp-edges;
-    image-rendering: crisp-edges;
-    color: #2f4f4f;
+    background:
+        radial-gradient(ellipse 120% 90% at 50% 40%, #0e141c 0%, #05070a 70%, #000 100%)
+        fixed;
+    padding-top: 30px;            /* clears the fixed OSD bar */
 }
 
-/* CRT Effect Overlay */
+/* ---- Global CRT glass: scanlines + curvature vignette ---- */
 body::before {
     content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: 
-        repeating-linear-gradient(
-            0deg,
-            transparent,
-            transparent 2px,
-            rgba(0, 0, 0, 0.03) 2px,
-            rgba(0, 0, 0, 0.03) 4px
-        ),
-        radial-gradient(ellipse at center, transparent 0%, rgba(0, 0, 0, 0.1) 100%);
-    pointer-events: none;
-    z-index: 9999;
-}
-
-/* Subtle noise texture */
-body::after {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    opacity: 0.02;
-    background-image: 
-        radial-gradient(circle at 25% 25%, #000 1px, transparent 1px),
-        radial-gradient(circle at 75% 75%, #000 1px, transparent 1px);
-    background-size: 4px 4px;
-    background-position: 0 0, 2px 2px;
+    position: fixed; inset: 0;
     pointer-events: none;
     z-index: 9998;
+    background:
+        repeating-linear-gradient(0deg,
+            transparent 0 2px, rgba(0,0,0,0.30) 2px 3px),
+        radial-gradient(ellipse 100% 100% at 50% 50%,
+            transparent 55%, rgba(0,0,0,0.55) 100%);
+    background-size: 100% 3px, 100% 100%;
+    animation: crt-flicker 5s steps(60) infinite;
 }
 
-/* Game Window Container */
+/* ---- One-shot power-on sweep + a touch of persistent grain ---- */
+body::after {
+    content: '';
+    position: fixed; inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+    background: #fff;
+    transform-origin: center;
+    animation: crt-on 1100ms ease-out 1 both;
+}
+
+@keyframes crt-on {
+    0%   { opacity: 1; transform: scaleY(0.004) scaleX(1.2); filter: brightness(3); }
+    9%   { opacity: 1; transform: scaleY(0.01)  scaleX(1.1); }
+    16%  { opacity: .9; transform: scaleY(1)    scaleX(1);   filter: brightness(2); }
+    22%  { opacity: .35; }
+    30%  { opacity: .7; }            /* degauss wobble */
+    45%  { opacity: .12; }
+    100% { opacity: 0; transform: scaleY(1) scaleX(1); filter: brightness(1); }
+}
+
+@keyframes crt-flicker {
+    0%,100% { opacity: 1; }
+    97%     { opacity: 1; }
+    98%     { opacity: .82; }
+    99%     { opacity: .94; }
+}
+
+/* ============================================================
+   TOP OSD BAR  (.game-menu-bar / .game-menu-button)
+   ============================================================ */
+.game-menu-bar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 30px;
+    background: linear-gradient(180deg, #1b1305 0%, #0b0801 100%);
+    border-bottom: 1px solid var(--amber-dim);
+    box-shadow: 0 1px 0 rgba(255,176,0,.15), 0 3px 10px rgba(0,0,0,.6);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 10px;
+    z-index: 1001;
+    overflow: hidden;
+}
+.game-menu-bar::before {
+    content: '▌AV-1';
+    font-family: 'VT323', monospace;
+    font-size: 18px;
+    color: var(--amber);
+    text-shadow: var(--glow-amber);
+    margin-right: 12px;
+    letter-spacing: 1px;
+}
+
+.game-menu-button {
+    height: 20px;
+    padding: 0 12px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--ink-dim);
+    font-family: 'Silkscreen', monospace;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    transition: color .12s, border-color .12s, text-shadow .12s;
+}
+.game-menu-button:hover {
+    color: var(--amber);
+    border-color: var(--line);
+    text-shadow: var(--glow-amber);
+}
+.game-menu-button:active { color: var(--green); }
+
+/* ============================================================
+   THE MONITOR  (.game-window)
+   ============================================================ */
 .game-window {
-    max-width: 800px;
-    margin: 60px auto 40px;
-    background: #f5f5dc;
-    border: 3px outset #f5f5dc;
-    box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.3);
-    image-rendering: pixelated;
+    width: min(800px, 100% - 24px);
+    margin: clamp(20px, 4vw, 34px) auto clamp(28px, 6vw, 48px);
+    background:
+        linear-gradient(160deg, var(--bezel-hi) 0%, var(--bezel) 18%, #0a0805 100%);
+    border-radius: clamp(14px, 3vw, 22px);
+    padding: clamp(8px, 2vw, 14px);
     position: relative;
+    box-shadow:
+        0 0 0 1px #000,
+        0 2px 0 rgba(255,255,255,.04) inset,
+        0 28px 60px rgba(0,0,0,.7);
     overflow: visible;
 }
+/* little power LED on the bezel */
+.game-window::after {
+    content: '';
+    position: absolute;
+    right: 22px; bottom: 8px;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green), 0 0 2px #fff inset;
+}
 
-/* Window Title Bar */
+/* OSD title strip */
 .window-title {
-    background: linear-gradient(to bottom, #4169e1 0%, #1e90ff 100%);
-    color: white;
-    padding: 4px 8px;
-    font-size: 10px;
-    font-weight: bold;
+    background: linear-gradient(180deg, rgba(255,176,0,.12), rgba(255,176,0,.02));
+    color: var(--amber);
+    padding: 8px 12px;
+    font-family: 'VT323', monospace;
+    font-size: 18px;
+    letter-spacing: 1px;
+    text-shadow: -1px 0 rgba(255,40,80,.5), 1px 0 rgba(60,220,255,.45), var(--glow-amber);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #000080;
+    border: 1px solid var(--line);
+    border-bottom: none;
+    border-radius: 10px 10px 0 0;
 }
 
-.window-controls {
-    display: flex;
-    gap: 2px;
-}
+.window-controls { display: flex; gap: 6px; }
 
 .window-button {
-    width: 16px;
-    height: 14px;
-    background: #c0c0c0;
-    border: 1px outset #c0c0c0;
-    font-size: 8px;
+    width: 22px; height: 18px;
+    background: #1a1206;
+    border: 1px solid var(--amber-dim);
+    color: var(--amber);
+    border-radius: 4px;
+    font-family: 'Silkscreen', monospace;
+    font-size: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    transition: background .12s, color .12s, box-shadow .12s;
 }
+.window-button:hover { background: var(--red); color: #fff; border-color: var(--red); box-shadow: 0 0 10px rgba(255,69,51,.6); }
+.window-button:active { transform: translateY(1px); }
 
-.window-button:active {
-    border: 1px inset #c0c0c0;
-}
-
-/* Game Content Area */
+/* The screen itself */
 .game-content {
-    padding: 16px;
-    background: #f5f5dc;
+    padding: clamp(14px, 3vw, 22px) clamp(12px, 2.5vw, 18px) clamp(16px, 3vw, 24px);
+    background:
+        radial-gradient(ellipse 100% 100% at 50% 45%, var(--tube-2) 0%, var(--tube) 80%, #000 100%);
+    border: 1px solid var(--line);
+    border-radius: 0 0 10px 10px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 12px;
+    gap: clamp(12px, 2.5vw, 16px);
+    box-shadow: inset 0 0 60px rgba(0,0,0,.9), inset 0 0 0 1px rgba(255,176,0,.05);
 }
 
-/* Game Canvas */
+/* Bento cells — plain stacking containers on mobile, columns on desktop */
+.screen-cell {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+}
+.side-cell {
+    width: 100%;
+    max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+/* Game canvas — the picture tube */
 canvas {
-    border: 2px inset #d2b48c;
+    border: 2px solid var(--amber-dim);
+    border-radius: 6px;
     background: #000;
     display: block;
     image-rendering: pixelated;
-    image-rendering: -moz-crisp-edges;
     image-rendering: crisp-edges;
-    max-width: 100%;
+    /* Fit inside the screen on any viewport while preserving the canvas's
+       intrinsic aspect ratio — caps tall boards (Tetris/Pac-Man) by height. */
+    width: auto;
     height: auto;
+    max-width: 100%;
+    max-height: min(72vh, 620px);
+    box-shadow: 0 0 22px rgba(255,176,0,.18), inset 0 0 40px rgba(0,0,0,.8);
 }
 
-/* HUD Panel */
+/* ============================================================
+   SCORE READOUT  (.hud-panel)
+   ============================================================ */
 .hud-panel {
-    background: #e6e6fa;
-    border: 2px inset #e6e6fa;
-    padding: 8px;
-    margin-bottom: 12px;
+    width: 100%;
+    max-width: 600px;
+    background: #060809;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 8px 12px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 10px;
+    gap: 8px;
+    box-shadow: inset 0 0 18px rgba(0,0,0,.8);
 }
-
-.hud-item {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
+.hud-item { display: flex; align-items: center; gap: 8px; }
 .hud-label {
-    font-weight: bold;
-    color: #4b0082;
+    font-family: 'Silkscreen', monospace;
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--ink-dim);
 }
-
 .hud-value {
     background: #000;
-    color: #00ff00;
-    padding: 2px 6px;
-    border: 1px inset #808080;
-    font-family: 'Press Start 2P', monospace;
-    font-size: 8px;
+    color: var(--amber);
+    padding: 2px 8px;
+    border: 1px solid var(--amber-dim);
+    border-radius: 3px;
+    font-family: 'VT323', monospace;
+    font-size: 20px;
+    line-height: 1;
+    letter-spacing: 2px;
+    text-shadow: var(--glow-amber);
+    min-width: 40px;
+    text-align: center;
 }
 
-/* Control Panel */
+/* ============================================================
+   INSTRUCTION PLACARD  (.control-panel)
+   ============================================================ */
 .control-panel {
-    background: #f0e68c;
-    border: 2px outset #f0e68c;
-    padding: 12px;
-    margin-bottom: 12px;
+    width: 100%;
+    max-width: 600px;
+    background: rgba(255,176,0,.04);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--amber);
+    border-radius: 4px;
+    padding: 12px 14px;
 }
-
-.control-section {
-    margin-bottom: 8px;
-}
-
+.control-section { margin-bottom: 6px; }
+.control-section:last-child { margin-bottom: 0; }
 .control-title {
-    font-size: 9px;
-    font-weight: bold;
-    color: #8b4513;
-    margin-bottom: 4px;
-}
-
-.control-text {
-    font-size: 8px;
-    line-height: 12px;
-    color: #2f4f4f;
-}
-
-/* Retro Buttons */
-.retro-button {
-    background: #ffb6c1;
-    border: 2px outset #ffb6c1;
-    color: #8b008b;
-    padding: 6px 12px;
     font-family: 'Silkscreen', monospace;
     font-size: 9px;
-    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--amber);
+    text-shadow: var(--glow-amber);
+    margin-bottom: 6px;
+}
+.control-text {
+    font-family: 'VT323', monospace;
+    font-size: 17px;
+    line-height: 1.25;
+    color: var(--ink-dim);
+}
+
+/* ============================================================
+   ARCADE PUSHBUTTONS  (.retro-button)
+   ============================================================ */
+.button-container {
+    width: 100%;
+    max-width: 600px;
+    text-align: center;
+    margin-top: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+}
+
+.retro-button {
+    appearance: none;
+    background: linear-gradient(180deg, #ffc63a 0%, var(--amber) 55%, #c98700 100%);
+    color: #2a1a00;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-family: 'Silkscreen', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
     cursor: pointer;
-    margin: 2px;
-    image-rendering: pixelated;
+    box-shadow: 0 5px 0 #7a5200, 0 6px 10px rgba(0,0,0,.5);
+    transition: transform .06s ease, box-shadow .06s ease, filter .12s;
 }
-
-.retro-button:hover {
-    background: #ffc0cb;
-    border: 2px outset #ffc0cb;
-}
-
+.retro-button:hover { filter: brightness(1.08); }
 .retro-button:active {
-    border: 2px inset #ffb6c1;
+    transform: translateY(4px);
+    box-shadow: 0 1px 0 #7a5200, 0 2px 4px rgba(0,0,0,.5);
+}
+.retro-button:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 3px;
 }
 
 .retro-button.primary {
-    background: #98fb98;
-    border: 2px outset #98fb98;
-    color: #006400;
+    background: linear-gradient(180deg, #7dffae 0%, var(--green) 55%, #16a64f 100%);
+    color: #04230f;
+    box-shadow: 0 5px 0 #0b6e34, 0 6px 10px rgba(0,0,0,.5);
 }
-
-.retro-button.primary:hover {
-    background: #90ee90;
-    border: 2px outset #90ee90;
-}
-
 .retro-button.primary:active {
-    border: 2px inset #98fb98;
+    box-shadow: 0 1px 0 #0b6e34, 0 2px 4px rgba(0,0,0,.5);
 }
 
-/* Button Container */
-.button-container {
-    text-align: center;
-    margin-top: 12px;
-}
-
-/* Game Over Screen */
+/* ============================================================
+   GAME-OVER DIALOG  (.game-over)
+   ============================================================ */
 .game-over {
     position: absolute;
-    top: 50%;
-    left: 50%;
+    top: 50%; left: 50%;
     transform: translate(-50%, -50%);
-    background: #f5deb3;
-    border: 3px outset #f5deb3;
-    padding: 20px;
+    background: linear-gradient(180deg, #0d1016, #05070a);
+    border: 1px solid var(--amber);
+    border-radius: 10px;
+    padding: clamp(18px, 5vw, 26px) clamp(20px, 6vw, 30px);
     text-align: center;
-    box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.3);
+    width: max-content;
+    max-width: min(360px, calc(100vw - 40px));
     z-index: 1000;
+    box-shadow: 0 0 0 1px #000, 0 0 30px rgba(255,176,0,.35), 0 24px 50px rgba(0,0,0,.7);
 }
-
 .game-over h2 {
-    color: #8b4513;
-    font-size: 12px;
+    font-family: 'Press Start 2P', monospace;
+    color: var(--red);
+    font-size: clamp(12px, 4vw, 16px);
+    line-height: 1.4;
+    margin-bottom: 14px;
+    text-shadow: -1px 0 rgba(60,220,255,.5), 1px 0 rgba(255,176,0,.5), 0 0 12px rgba(255,69,51,.6);
+}
+.game-over p {
+    font-family: 'VT323', monospace;
+    font-size: 19px;
+    color: var(--ink);
     margin-bottom: 8px;
 }
+.game-over p:last-of-type { margin-bottom: 18px; }
+.game-over .retro-button { margin: 4px; }
 
-.game-over p {
-    font-size: 9px;
-    margin-bottom: 12px;
-    color: #2f4f4f;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-    .game-window {
-        margin: 40px 10px;
-        max-width: calc(100% - 20px);
-    }
-    
-    .hud-panel {
-        flex-direction: column;
-        gap: 4px;
-        align-items: stretch;
-    }
-    
-    .hud-item {
-        justify-content: space-between;
-    }
-    
-    canvas {
-        max-width: 100%;
-        height: auto;
-    }
-}
-
-/* Menu Bar for Game Pages */
-.game-menu-bar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 24px;
-    background: #f5deb3;
-    border-bottom: 2px solid #d2b48c;
-    display: flex;
-    align-items: center;
-    padding: 0 8px;
-    z-index: 1001;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.game-menu-button {
-    height: 18px;
-    padding: 0 12px;
-    background: #f5deb3;
-    border: 1px solid #d2b48c;
-    font-family: 'Silkscreen', monospace;
-    font-size: 9px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    margin-right: 4px;
-    color: #8b4513;
-    text-decoration: none;
-}
-
-.game-menu-button:hover {
-    background: #faebd7;
-    border: 1px solid #cd853f;
-}
-
-.game-menu-button:active {
-    background: #deb887;
-}
-
-/* Tic-Tac-Toe Board Styling */
+/* ============================================================
+   TIC-TAC-TOE BOARD  (#board / .cell / #status)
+   ============================================================ */
 #board {
     display: grid;
     grid-template-columns: repeat(3, 80px);
     grid-template-rows: repeat(3, 80px);
-    gap: 4px;
+    gap: 6px;
     margin: 0 auto;
-    background: #d2b48c;
-    padding: 4px;
-    border: 2px inset #d2b48c;
+    background: #060809;
+    padding: 6px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: inset 0 0 24px rgba(0,0,0,.85);
 }
-
 .cell {
-    background: #f5f5dc;
-    border: 2px outset #f5f5dc;
+    background: #0b0f15;
+    border: 1px solid var(--amber-dim);
+    border-radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 32px;
-    font-weight: bold;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 30px;
     cursor: pointer;
-    color: #2f4f4f;
-    font-family: 'Silkscreen', monospace;
+    color: var(--amber);
+    text-shadow: var(--glow-amber);
+    transition: background .12s, box-shadow .12s;
+}
+.cell:hover { background: #14202c; box-shadow: inset 0 0 18px rgba(255,176,0,.25); }
+.cell:active { transform: translateY(1px); }
+
+#status {
+    font-family: 'VT323', monospace;
+    font-size: 20px;
+    color: var(--amber);
+    text-shadow: var(--glow-amber);
+    margin-top: 16px;
 }
 
-.cell:hover {
-    background: #faebd7;
-    border: 2px outset #faebd7;
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+/* ============================================================
+   DESKTOP BENTO — canvas fits on the left, panels stack on the right
+   ============================================================ */
+@media (min-width: 769px) {
+    .game-content {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) clamp(230px, 30%, 320px);
+        align-items: start;
+        gap: 16px 20px;
+    }
+    .hud-panel   { grid-column: 1 / -1; max-width: none; }   /* scoreboard header */
+    .screen-cell { grid-column: 1; }
+    .side-cell   { grid-column: 2; max-width: none; }
+    /* Cap the screen to the viewport height so it never runs off the bottom */
+    .screen-cell canvas { max-height: calc(100dvh - 250px); }
 }
 
-.cell:active {
-    border: 2px inset #f5f5dc;
+/* Tablet / large phone */
+@media (max-width: 768px) {
+    .window-title { font-size: 15px; }
+    .hud-panel { flex-wrap: wrap; gap: 6px 10px; justify-content: center; }
+    .hud-item { flex: 1 1 auto; justify-content: space-between; min-width: 86px; }
+    .button-container { gap: 8px; }
+    #board {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-rows: auto;
+        aspect-ratio: 1;
+        width: min(280px, 80vw);
+    }
+    .cell { aspect-ratio: 1; font-size: clamp(22px, 9vw, 30px); }
 }
 
-/* Fix for overlapping elements */
-.hud-panel {
-    width: 100%;
-    max-width: 600px;
+/* Small phone */
+@media (max-width: 480px) {
+    .game-menu-bar::before { display: none; }       /* reclaim width for nav */
+    .game-menu-button { padding: 0 8px; font-size: 8px; }
+    .hud-value { font-size: 17px; }
+    .retro-button { flex: 1 1 130px; padding: 11px 12px; }
+    .game-over { width: auto; }
 }
 
-.control-panel {
-    width: 100%;
-    max-width: 600px;
+/* Landscape phones: keep the board reachable, screen scrolls if needed */
+@media (max-height: 480px) and (orientation: landscape) {
+    canvas { max-height: 80vh; }
+    .game-window { margin-top: 14px; }
 }
 
-.button-container {
-    width: 100%;
-    max-width: 600px;
+/* ============================================================
+   MOTION SAFETY
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+    body::before { animation: none; }
+    body::after { animation: none; opacity: 0; }
+    .retro-button { transition: none; }
 }

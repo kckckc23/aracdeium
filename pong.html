@@ -21,7 +21,7 @@
         <div class="window-button" onclick="window.location.href='index.html'">×</div>
       </div>
     </div>
-    
+
     <div class="game-content">
       <!-- HUD Panel -->
       <div class="hud-panel">
@@ -40,15 +40,17 @@
       </div>
 
       <!-- Game Canvas -->
-      <canvas id="pong" width="560" height="320"></canvas>
-      
+      <div class="screen-cell"><canvas id="pong" width="560" height="320"></canvas></div>
+
+      <!-- Side panel: instructions + buttons -->
+      <div class="side-cell">
       <!-- Control Panel -->
       <div class="control-panel">
         <div class="control-section">
           <div class="control-title">Game Controls:</div>
           <div class="control-text">
-            Mouse Movement: Control your paddle (left side)<br>
-            First to 10 points wins! Ball speed increases with each hit.
+            Mouse or ↑/↓ (W/S): Move your paddle<br>
+            First to 10 points wins! The ball speeds up every rally.
           </div>
         </div>
       </div>
@@ -58,6 +60,7 @@
         <button class="retro-button primary" onclick="restartGame()">New Game</button>
         <button class="retro-button" onclick="pauseGame()">Pause</button>
         <button class="retro-button" onclick="showHelp()">Help</button>
+      </div>
       </div>
     </div>
   </div>
@@ -74,215 +77,216 @@
   <script>
     const canvas = document.getElementById("pong");
     const ctx = canvas.getContext("2d");
+    const W = canvas.width, H = canvas.height;
 
-    // Audio setup
     const ballHitSound = new Audio('music/pong_ballhit.mp3');
     ballHitSound.volume = 0.5;
+    function playHit() { ballHitSound.currentTime = 0; ballHitSound.play().catch(() => {}); }
 
-    const paddleWidth = 10, paddleHeight = 100;
-    const player = { x: 0, y: canvas.height / 2 - 50, score: 0 };
-    const ai = { x: canvas.width - 10, y: canvas.height / 2 - 50, score: 0 };
-    let ball = {
-      x: canvas.width / 2,
-      y: canvas.height / 2,
-      radius: 8,
-      baseSpeed: 4,
-      currentSpeed: 4,
-      dx: 4,
-      dy: 4,
-      bounces: 0
-    };
-    
-    let gameRunning = true;
-    const maxScore = 10;
+    const COL = { player: '#ffb000', ai: '#ff4533', ball: '#ffe7b0', net: 'rgba(255,176,0,.28)', text: '#ffb000' };
 
-    function drawRect(x, y, w, h, color) {
-      ctx.fillStyle = color;
-      ctx.fillRect(x, y, w, h);
-    }
+    const PADDLE_W = 12, PADDLE_H = 92;
+    const BASE_SPEED = 300, SPEED_INC = 16, MAX_SPEED = 660;   // px/sec
+    const MAX_ANGLE = 1.05;                                    // ~60° off horizontal
+    const KEY_SPEED = 380;                                     // player keyboard px/sec
+    const MAX_SCORE = 10;
 
-    function drawCircle(x, y, r, color) {
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(x, y, r, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.fill();
-    }
+    const player = { x: 8, y: H / 2 - PADDLE_H / 2 };
+    const ai = { x: W - 8 - PADDLE_W, y: H / 2 - PADDLE_H / 2, err: 0 };
+    const ball = { x: W / 2, y: H / 2, r: 8, vx: 0, vy: 0, speed: BASE_SPEED };
+    const keys = { up: false, down: false };
 
-    function drawNet() {
-      for (let i = 0; i < canvas.height; i += 15) {
-        drawRect(canvas.width / 2 - 1, i, 2, 10, "#00FFFF");
-      }
-    }
+    let pScore = 0, aScore = 0, rally = 0;
+    let state = 'serve', serveTimer = 1.0, serveDir = 1;   // serve|play|paused|over
+    let paused = false, loopRunning = false, lastTs = 0, animTime = 0;
 
-    function drawScore() {
-      ctx.fillStyle = "#00FFFF";
-      ctx.font = "30px Orbitron";
-      ctx.textAlign = "center";
-      ctx.fillText(player.score, canvas.width / 4, 50);
-      ctx.fillText(ai.score, 3 * canvas.width / 4, 50);
-      
-      // Speed indicator
-      ctx.font = "16px Orbitron";
-      ctx.fillText(`Speed: ${ball.currentSpeed.toFixed(1)}x`, canvas.width / 2, canvas.height - 20);
-    }
-
-    function movePaddle(evt) {
-      if (!gameRunning) return;
-      const rect = canvas.getBoundingClientRect();
-      player.y = Math.max(0, Math.min(canvas.height - paddleHeight, evt.clientY - rect.top - paddleHeight / 2));
-    }
-
-    function resetBall() {
-      ball.x = canvas.width / 2;
-      ball.y = canvas.height / 2;
-      ball.currentSpeed = ball.baseSpeed;
-      ball.dx = ball.baseSpeed * (Math.random() > 0.5 ? 1 : -1);
-      ball.dy = ball.baseSpeed * (Math.random() > 0.5 ? 1 : -1);
-      ball.bounces = 0;
-    }
-
-    function update() {
-      if (!gameRunning) return;
-      
-      ball.x += ball.dx;
-      ball.y += ball.dy;
-
-      // Bounce off top/bottom
-      if (ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) {
-        ball.dy = -ball.dy;
-      }
-
-      // AI Movement (slightly imperfect for gameplay)
-      const aiCenter = ai.y + paddleHeight / 2;
-      const ballCenter = ball.y;
-      const aiSpeed = 4;
-      
-      if (ballCenter < aiCenter - 10) {
-        ai.y = Math.max(0, ai.y - aiSpeed);
-      } else if (ballCenter > aiCenter + 10) {
-        ai.y = Math.min(canvas.height - paddleHeight, ai.y + aiSpeed);
-      }
-
-      // Choose paddle based on side
-      const paddle = ball.x < canvas.width / 2 ? player : ai;
-
-      // Collision with paddle
-      if (
-        ball.x - ball.radius < paddle.x + paddleWidth &&
-        ball.x + ball.radius > paddle.x &&
-        ball.y + ball.radius > paddle.y &&
-        ball.y - ball.radius < paddle.y + paddleHeight
-      ) {
-        // Calculate hit position for angle variation
-        const hitPos = (ball.y - (paddle.y + paddleHeight / 2)) / (paddleHeight / 2);
-        
-        // Reverse direction and increase speed
-        ball.dx = -ball.dx;
-        ball.dy = ball.dy + hitPos * 2; // Add spin based on hit position
-        
-        // Increase speed with each bounce
-        ball.bounces++;
-        ball.currentSpeed = Math.min(12, ball.baseSpeed + ball.bounces * 0.3);
-        
-        // Apply new speed
-        const speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
-        ball.dx = (ball.dx / speed) * ball.currentSpeed;
-        ball.dy = (ball.dy / speed) * ball.currentSpeed;
-        
-        // Prevent sticking
-        ball.x += ball.dx > 0 ? 15 : -15;
-        
-        // Play ball hit sound
-        ballHitSound.currentTime = 0;
-        ballHitSound.play().catch(e => console.log('Audio play failed:', e));
-      }
-
-      // Score when ball goes out of bounds
-      if (ball.x < -ball.radius) {
-        ai.score++;
-        resetBall();
-        checkGameEnd();
-      } else if (ball.x > canvas.width + ball.radius) {
-        player.score++;
-        resetBall();
-        checkGameEnd();
-      }
-    }
-
-    function checkGameEnd() {
-      if (player.score >= maxScore || ai.score >= maxScore) {
-        gameRunning = false;
-        document.getElementById('playerScore').textContent = player.score;
-        document.getElementById('aiScore').textContent = ai.score;
-        document.getElementById('gameOverTitle').textContent = 
-          player.score >= maxScore ? 'YOU WIN!' : 'AI WINS!';
-        document.getElementById('gameOver').style.display = 'block';
-      }
-    }
-
-    function draw() {
-      drawRect(0, 0, canvas.width, canvas.height, "black");
-      drawNet();
-      
-      // Draw paddles with glow effect
-      ctx.shadowColor = "#00FFFF";
-      ctx.shadowBlur = 10;
-      drawRect(player.x, player.y, paddleWidth, paddleHeight, "#00FFFF");
-      drawRect(ai.x, ai.y, paddleWidth, paddleHeight, "#FF00FF");
-      ctx.shadowBlur = 0;
-      
-      // Draw ball with trail effect
-      ctx.shadowColor = "#FFFFFF";
-      ctx.shadowBlur = 15;
-      drawCircle(ball.x, ball.y, ball.radius, "white");
-      ctx.shadowBlur = 0;
-      
-      drawScore();
-    }
-
-    function restartGame() {
-      player.score = 0;
-      ai.score = 0;
-      gameRunning = true;
-      resetBall();
-      document.getElementById('gameOver').style.display = 'none';
+    function resetBall(towards) {
+      ball.x = W / 2; ball.y = H / 2; ball.speed = BASE_SPEED;
+      ball.vx = 0; ball.vy = 0; rally = 0;
+      serveDir = towards; state = 'serve'; serveTimer = 1.0;
       updateHUD();
+    }
+    function launchBall() {
+      const angle = (Math.random() * 2 - 1) * 0.5;   // shallow opening serve
+      ball.vx = Math.cos(angle) * ball.speed * serveDir;
+      ball.vy = Math.sin(angle) * ball.speed;
+      state = 'play';
+    }
+
+    function bounceOffPaddle(p, dir) {
+      const hit = Math.max(-1, Math.min(1, (ball.y - (p.y + PADDLE_H / 2)) / (PADDLE_H / 2)));
+      const angle = hit * MAX_ANGLE;
+      ball.speed = Math.min(MAX_SPEED, ball.speed + SPEED_INC);
+      ball.vx = Math.cos(angle) * ball.speed * dir;
+      ball.vy = Math.sin(angle) * ball.speed;
+      rally++;
+      ai.err = (Math.random() * 2 - 1) * 26;   // re-roll AI aim error each exchange
+      playHit();
+      updateHUD();
+    }
+
+    function updateAI(dt) {
+      // only chase when the ball is heading toward the AI; otherwise drift to centre
+      const aiMax = 250 + Math.min(rally * 7, 150);   // 250→400 px/sec
+      let targetY;
+      if (ball.vx > 0) targetY = ball.y - PADDLE_H / 2 + ai.err;
+      else targetY = H / 2 - PADDLE_H / 2;
+      const dy = targetY - ai.y;
+      const move = Math.sign(dy) * Math.min(aiMax * dt, Math.abs(dy));
+      ai.y = Math.max(0, Math.min(H - PADDLE_H, ai.y + move));
+    }
+
+    function update(dt) {
+      if (state === 'serve') {
+        serveTimer -= dt;
+        if (serveTimer <= 0) launchBall();
+        return;
+      }
+      if (state !== 'play') return;
+
+      // keyboard paddle
+      if (keys.up) player.y -= KEY_SPEED * dt;
+      if (keys.down) player.y += KEY_SPEED * dt;
+      player.y = Math.max(0, Math.min(H - PADDLE_H, player.y));
+
+      updateAI(dt);
+
+      ball.x += ball.vx * dt;
+      ball.y += ball.vy * dt;
+
+      // top / bottom walls
+      if (ball.y - ball.r < 0) { ball.y = ball.r; ball.vy = Math.abs(ball.vy); }
+      else if (ball.y + ball.r > H) { ball.y = H - ball.r; ball.vy = -Math.abs(ball.vy); }
+
+      // player paddle (left)
+      if (ball.vx < 0 && ball.x - ball.r < player.x + PADDLE_W && ball.x - ball.r > player.x - 12 &&
+          ball.y > player.y && ball.y < player.y + PADDLE_H) {
+        ball.x = player.x + PADDLE_W + ball.r;
+        bounceOffPaddle(player, 1);
+      }
+      // ai paddle (right)
+      if (ball.vx > 0 && ball.x + ball.r > ai.x && ball.x + ball.r < ai.x + PADDLE_W + 12 &&
+          ball.y > ai.y && ball.y < ai.y + PADDLE_H) {
+        ball.x = ai.x - ball.r;
+        bounceOffPaddle(ai, -1);
+      }
+
+      // scoring
+      if (ball.x < -ball.r) { aScore++; afterPoint(1); }       // AI scored → serve toward player
+      else if (ball.x > W + ball.r) { pScore++; afterPoint(-1); }
+    }
+
+    function afterPoint(serveTowards) {
+      updateHUD();
+      if (pScore >= MAX_SCORE || aScore >= MAX_SCORE) { endGame(); return; }
+      resetBall(serveTowards);
+    }
+
+    function endGame() {
+      state = 'over';
+      document.getElementById('playerScore').textContent = pScore;
+      document.getElementById('aiScore').textContent = aScore;
+      document.getElementById('gameOverTitle').textContent = pScore >= MAX_SCORE ? 'YOU WIN!' : 'AI WINS!';
+      document.getElementById('gameOver').style.display = 'block';
+    }
+
+    // ── Render ─────────────────────────────────────────────
+    function render() {
+      ctx.fillStyle = '#04040a';
+      ctx.fillRect(0, 0, W, H);
+
+      // net
+      ctx.fillStyle = COL.net;
+      for (let y = 6; y < H; y += 22) ctx.fillRect(W / 2 - 2, y, 4, 12);
+
+      // scores
+      ctx.fillStyle = COL.text;
+      ctx.font = '28px "Press Start 2P", monospace';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.save(); ctx.shadowColor = 'rgba(255,176,0,.5)'; ctx.shadowBlur = 10;
+      ctx.fillText(pScore, W / 4, 40);
+      ctx.fillText(aScore, 3 * W / 4, 40);
+      ctx.restore();
+
+      // paddles (glow)
+      ctx.save(); ctx.shadowBlur = 12;
+      ctx.shadowColor = COL.player; ctx.fillStyle = COL.player;
+      ctx.fillRect(player.x, player.y, PADDLE_W, PADDLE_H);
+      ctx.shadowColor = COL.ai; ctx.fillStyle = COL.ai;
+      ctx.fillRect(ai.x, ai.y, PADDLE_W, PADDLE_H);
+      ctx.restore();
+
+      // ball
+      ctx.save(); ctx.shadowColor = '#fff'; ctx.shadowBlur = 14;
+      ctx.fillStyle = COL.ball;
+      ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+
+      if (state === 'serve') {
+        ctx.fillStyle = COL.text;
+        ctx.font = '20px "VT323", monospace';
+        ctx.fillText('GET READY', W / 2, H / 2 + 40);
+      }
+      if (paused) {
+        ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = COL.text; ctx.font = '24px "Press Start 2P", monospace';
+        ctx.fillText('PAUSED', W / 2, H / 2);
+      }
     }
 
     function updateHUD() {
-      document.getElementById('playerScoreDisplay').textContent = player.score;
-      document.getElementById('aiScoreDisplay').textContent = ai.score;
-      document.getElementById('speedDisplay').textContent = ball.currentSpeed.toFixed(1) + 'x';
+      document.getElementById('playerScoreDisplay').textContent = pScore;
+      document.getElementById('aiScoreDisplay').textContent = aScore;
+      document.getElementById('speedDisplay').textContent = (ball.speed / BASE_SPEED).toFixed(1) + 'x';
     }
+
+    // ── Loop ───────────────────────────────────────────────
+    function loop(ts) {
+      if (!lastTs) lastTs = ts;
+      const dt = Math.min((ts - lastTs) / 1000, 0.05);
+      lastTs = ts; animTime += dt;
+      if (!paused && state !== 'over') update(dt);
+      render();
+      if (state === 'over') { loopRunning = false; return; }
+      requestAnimationFrame(loop);
+    }
+
+    // ── Controls / hooks ───────────────────────────────────
+    function movePaddle(evt) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleY = canvas.height / rect.height;
+      const y = (evt.clientY - rect.top) * scaleY;
+      player.y = Math.max(0, Math.min(H - PADDLE_H, y - PADDLE_H / 2));
+    }
+
+    function restartGame() {
+      pScore = 0; aScore = 0; paused = false;
+      player.y = ai.y = H / 2 - PADDLE_H / 2;
+      document.getElementById('gameOver').style.display = 'none';
+      resetBall(Math.random() < 0.5 ? 1 : -1);
+      if (!loopRunning) { loopRunning = true; lastTs = 0; requestAnimationFrame(loop); }
+    }
+
+    function pauseGame() { if (state !== 'over') paused = !paused; }
 
     function showHelp() {
-      alert('🏓 Pong.exe Help\n\nObjective: Beat the computer to 10 points!\n\nControls:\n• Mouse - Move your paddle (left side)\n\nGameplay:\n• Ball speed increases with each hit\n• Hit different parts of paddle for angle shots\n• First to 10 points wins!\n\nGood luck!');
+      alert('🏓 Pong.exe Help\n\nObjective: First to 10 points beats the computer!\n\nControls:\n• Mouse — move your paddle (left side)\n• ↑ / ↓ or W / S — keyboard control\n\nGameplay:\n• The ball speeds up the longer the rally lasts\n• Hit with the paddle edge for sharper angles\n• The CPU drifts to centre when the ball moves away\n\nGood luck!');
     }
+    function minimizeWindow() { alert('💻 Minimize\n\nWindow minimized to taskbar!\n(This is just a demo)'); }
 
-    function pauseGame() {
-      gameRunning = !gameRunning;
-      if (gameRunning) {
-        alert('Game Resumed!');
-      } else {
-        alert('Game Paused!\nClick OK to resume.');
-        gameRunning = true;
-      }
-    }
+    canvas.addEventListener('mousemove', movePaddle);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') { e.preventDefault(); keys.up = true; }
+      else if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') { e.preventDefault(); keys.down = true; }
+      else if (e.key === 'p' || e.key === 'P') pauseGame();
+    });
+    document.addEventListener('keyup', (e) => {
+      if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') keys.up = false;
+      else if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') keys.down = false;
+    });
 
-    function minimizeWindow() {
-      alert('💻 Minimize\n\nWindow minimized to taskbar!\n(This is just a demo)');
-    }
-
-    function game() {
-      update();
-      draw();
-      updateHUD();
-    }
-
-    canvas.addEventListener("mousemove", movePaddle);
-    updateHUD();
-    setInterval(game, 1000 / 60);
+    // Boot
+    restartGame();
   </script>
 </body>
 </html>

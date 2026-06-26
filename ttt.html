@@ -4,12 +4,29 @@
   <title>TicTac.exe - Arcadeium</title>
   <link rel="stylesheet" href="retro-desktop.css">
   <style>
-    /* Override any remaining neon styles - use flat retro OS styling only */
     #status {
-      font-size: 12px;
-      color: #2f4f4f;
+      font-family: 'VT323', monospace;
+      font-size: 20px;
+      color: #ffb000;
+      text-shadow: 0 0 6px rgba(255,176,0,.55), 0 0 18px rgba(255,176,0,.25);
       margin-top: 16px;
     }
+    .cell.x { color: #ffb000; }
+    .cell.o { color: #36e0ff; text-shadow: 0 0 6px rgba(54,224,255,.6); }
+    .cell.win {
+      background: #11331f;
+      box-shadow: inset 0 0 20px rgba(77,255,136,.55), 0 0 10px rgba(77,255,136,.4);
+      border-color: #4dff88;
+    }
+    .score-line {
+      font-family: 'VT323', monospace;
+      font-size: 18px;
+      color: #c9a86a;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .score-line b { color: #ffb000; }
   </style>
 </head>
 <body>
@@ -29,33 +46,44 @@
         <div class="window-button" onclick="window.location.href='index.html'">×</div>
       </div>
     </div>
-    
+
     <div class="game-content">
       <!-- HUD Panel -->
       <div class="hud-panel">
         <div class="hud-item">
-          <span class="hud-label">Current Player:</span>
+          <span class="hud-label">Turn:</span>
           <span class="hud-value" id="currentPlayerDisplay">X</span>
         </div>
         <div class="hud-item">
-          <span class="hud-label">Game Status:</span>
+          <span class="hud-label">Mode:</span>
+          <span class="hud-value" id="modeDisplay">1P</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">Status:</span>
           <span class="hud-value" id="gameStatus">Playing</span>
         </div>
       </div>
 
       <!-- Game Board -->
-      <div style="text-align: center; margin: 20px 0;">
+      <div class="screen-cell" style="text-align: center; margin: 20px 0;">
         <div id="board"></div>
-        <p id="status" style="margin-top: 16px; font-size: 12px;"></p>
+        <p id="status"></p>
       </div>
-      
+
+      <!-- Side panel: instructions + buttons -->
+      <div class="side-cell">
       <!-- Control Panel -->
       <div class="control-panel">
         <div class="control-section">
-          <div class="control-title">Game Rules:</div>
+          <div class="control-title">Scoreboard:</div>
+          <div class="score-line"><span>You (X)</span><b id="xWins">0</b></div>
+          <div class="score-line"><span>CPU (O)</span><b id="oWins">0</b></div>
+          <div class="score-line"><span>Draws</span><b id="draws">0</b></div>
+        </div>
+        <div class="control-section">
+          <div class="control-title">How to play:</div>
           <div class="control-text">
-            Click any empty square to place your mark (X or O)<br>
-            Get three in a row horizontally, vertically, or diagonally to win!
+            Click a square to drop your mark. Line up three to win!
           </div>
         </div>
       </div>
@@ -63,7 +91,9 @@
       <!-- Button Container -->
       <div class="button-container">
         <button class="retro-button primary" onclick="resetGame()">New Game</button>
+        <button class="retro-button" id="modeBtn" onclick="toggleMode()">VS CPU</button>
         <button class="retro-button" onclick="showHelp()">Help</button>
+      </div>
       </div>
     </div>
   </div>
@@ -78,91 +108,158 @@
 
   <script>
     const board = document.getElementById('board');
-    const status = document.getElementById('status');
-    let cells = Array(9).fill('');
-    let currentPlayer = 'X';
-    let gameOver = false;
+    const statusEl = document.getElementById('status');
+    const WINS = [
+      [0,1,2],[3,4,5],[6,7,8],
+      [0,3,6],[1,4,7],[2,5,8],
+      [0,4,8],[2,4,6]
+    ];
 
-    function renderBoard() {
-      board.innerHTML = '';
-      cells.forEach((value, i) => {
-        const cell = document.createElement('div');
-        cell.className = 'cell';
-        cell.textContent = value;
-        cell.onclick = () => makeMove(i);
-        board.appendChild(cell);
-      });
-    }
+    let cells, currentPlayer, gameOver, winLine, vsCpu = true;
+    const tally = { X: 0, O: 0, draws: 0 };
 
-    function makeMove(i) {
-      if (cells[i] === '' && !gameOver) {
-        cells[i] = currentPlayer;
-        updateHUD();
-        
-        if (checkWin()) {
-          status.textContent = `${currentPlayer} wins!`;
-          gameOver = true;
-          document.getElementById('gameStatus').textContent = `${currentPlayer} Wins!`;
-          showGameOver(`${currentPlayer} WINS!`);
-        } else if (!cells.includes('')) {
-          status.textContent = `It's a draw!`;
-          gameOver = true;
-          document.getElementById('gameStatus').textContent = 'Draw';
-          showGameOver("IT'S A DRAW!");
-        } else {
-          currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
-          status.textContent = `Player ${currentPlayer}'s turn`;
-        }
-        renderBoard();
-      }
-    }
+    // ── Audio ────────────────────────────────────────────────
+    let audioOn = false;
+    const sPlace = new Audio('music/ttt_place.wav');
+    const sWin   = new Audio('music/ttt_win.wav');
+    const sDraw  = new Audio('music/ttt_draw.wav');
+    sPlace.volume = 0.4; sWin.volume = 0.6; sDraw.volume = 0.5;
+    function enableAudio() { if (!audioOn) { audioOn = true; [sPlace, sWin, sDraw].forEach(a => a.load()); } }
+    function playSound(s) { if (audioOn) { s.currentTime = 0; s.play().catch(() => {}); } }
+    document.addEventListener('click', enableAudio);
 
-    function updateHUD() {
-      document.getElementById('currentPlayerDisplay').textContent = currentPlayer;
-      if (!gameOver) {
-        document.getElementById('gameStatus').textContent = 'Playing';
-      }
-    }
-
-    function showGameOver(result) {
-      document.getElementById('gameResult').textContent = result;
-      document.getElementById('gameOver').style.display = 'block';
-    }
-
-    function resetGame() {
+    function newRound() {
       cells = Array(9).fill('');
       currentPlayer = 'X';
       gameOver = false;
-      status.textContent = "Player X's turn";
+      winLine = null;
+      statusEl.textContent = vsCpu ? 'Your turn (X)' : "Player X's turn";
       document.getElementById('gameOver').style.display = 'none';
       updateHUD();
       renderBoard();
     }
 
-    function showHelp() {
-      alert('⭕ TicTac.exe Help\n\nObjective: Get three in a row!\n\nRules:\n• Players take turns placing X and O\n• First to get 3 in a row wins\n• Rows can be horizontal, vertical, or diagonal\n• If all squares are filled with no winner, it\'s a draw\n\nGood luck!');
-    }
-
-    function minimizeWindow() {
-      alert('💻 Minimize\n\nWindow minimized to taskbar!\n(This is just a demo)');
-    }
-
-    function checkWin() {
-      const wins = [
-        [0,1,2],[3,4,5],[6,7,8],
-        [0,3,6],[1,4,7],[2,5,8],
-        [0,4,8],[2,4,6]
-      ];
-      return wins.some(combo => {
-        const [a,b,c] = combo;
-        return cells[a] && cells[a] === cells[b] && cells[a] === cells[c];
+    function renderBoard() {
+      board.innerHTML = '';
+      cells.forEach((value, i) => {
+        const cell = document.createElement('div');
+        cell.className = 'cell' + (value ? ' ' + value.toLowerCase() : '') +
+                         (winLine && winLine.includes(i) ? ' win' : '');
+        cell.textContent = value;
+        cell.onclick = () => humanMove(i);
+        board.appendChild(cell);
       });
     }
 
-    // Initialize game
-    status.textContent = "Player X's turn";
-    updateHUD();
-    renderBoard();
+    function updateHUD() {
+      document.getElementById('currentPlayerDisplay').textContent = currentPlayer;
+      document.getElementById('modeDisplay').textContent = vsCpu ? '1P' : '2P';
+      document.getElementById('gameStatus').textContent = gameOver ? 'Over' : 'Playing';
+      document.getElementById('xWins').textContent = tally.X;
+      document.getElementById('oWins').textContent = tally.O;
+      document.getElementById('draws').textContent = tally.draws;
+    }
+
+    function winnerOf(b) {
+      for (const line of WINS) {
+        const [a, c, d] = line;
+        if (b[a] && b[a] === b[c] && b[a] === b[d]) return { player: b[a], line };
+      }
+      return null;
+    }
+
+    function place(i, player) {
+      cells[i] = player;
+      playSound(sPlace);
+      const w = winnerOf(cells);
+      if (w) { endRound(w.player, w.line); return true; }
+      if (!cells.includes('')) { endRound(null, null); return true; }
+      currentPlayer = player === 'X' ? 'O' : 'X';
+      statusEl.textContent = vsCpu
+        ? (currentPlayer === 'X' ? 'Your turn (X)' : 'CPU thinking…')
+        : `Player ${currentPlayer}'s turn`;
+      updateHUD();
+      renderBoard();
+      return false;
+    }
+
+    function humanMove(i) {
+      enableAudio();
+      if (gameOver || cells[i] !== '') return;
+      if (vsCpu && currentPlayer !== 'X') return;     // wait for CPU
+      const finished = place(i, currentPlayer);
+      if (!finished && vsCpu && currentPlayer === 'O') {
+        setTimeout(cpuMove, 320);
+      }
+    }
+
+    // ── Minimax CPU (plays O, never loses) ───────────────────
+    function cpuMove() {
+      if (gameOver) return;
+      const best = bestMove(cells, 'O');
+      place(best.index, 'O');
+    }
+
+    function bestMove(b, player) {
+      const win = winnerOf(b);
+      if (win) return { score: win.player === 'O' ? 10 : -10 };
+      if (!b.includes('')) return { score: 0 };
+
+      const moves = [];
+      for (let i = 0; i < 9; i++) {
+        if (b[i] === '') {
+          b[i] = player;
+          const result = bestMove(b, player === 'O' ? 'X' : 'O');
+          moves.push({ index: i, score: result.score });
+          b[i] = '';
+        }
+      }
+      // depth-agnostic: pick best for the side to move
+      if (player === 'O') return moves.reduce((a, m) => m.score > a.score ? m : a, { score: -Infinity });
+      return moves.reduce((a, m) => m.score < a.score ? m : a, { score: Infinity });
+    }
+
+    function endRound(winner, line) {
+      gameOver = true;
+      winLine = line;
+      renderBoard();
+      if (winner) {
+        tally[winner]++;
+        const who = vsCpu ? (winner === 'X' ? 'YOU WIN!' : 'CPU WINS!') : `${winner} WINS!`;
+        statusEl.textContent = who;
+        playSound(sWin);
+        showResult(who);
+      } else {
+        tally.draws++;
+        statusEl.textContent = "It's a draw!";
+        playSound(sDraw);
+        showResult("IT'S A DRAW!");
+      }
+      updateHUD();
+    }
+
+    function showResult(text) {
+      document.getElementById('gameOverTitle').textContent = 'Round Over';
+      document.getElementById('gameResult').textContent = text;
+      document.getElementById('gameOver').style.display = 'block';
+    }
+
+    function resetGame() { newRound(); }
+
+    function toggleMode() {
+      vsCpu = !vsCpu;
+      document.getElementById('modeBtn').textContent = vsCpu ? 'VS CPU' : '2 PLAYERS';
+      tally.X = 0; tally.O = 0; tally.draws = 0;
+      newRound();
+    }
+
+    function showHelp() {
+      alert('⭕ TicTac.exe Help\n\nObjective: Get three of your marks in a row!\n\nModes:\n• VS CPU — you are X against an unbeatable computer (O)\n• 2 Players — take turns on one screen\n\nRules:\n• Click an empty square to place your mark\n• Three in a row (any direction) wins\n• Full board with no winner is a draw\n\nGood luck!');
+    }
+    function minimizeWindow() { alert('💻 Minimize\n\nWindow minimized to taskbar!\n(This is just a demo)'); }
+
+    // Boot
+    newRound();
   </script>
 </body>
 </html>
